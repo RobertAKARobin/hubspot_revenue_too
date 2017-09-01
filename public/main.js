@@ -104,7 +104,7 @@ var DealsList = (function(){
 				case 'float':
 					deal[name] = (parseFloat(value) || 0); break;
 				case 'dollars':
-					deal[name] = (parseFloat(value) || 0); break;
+					deal[name] = '$' + (parseFloat(value) || 0).toFixed(2); break;
 				default:
 					deal[name] = value;
 			}
@@ -124,15 +124,14 @@ var DealsList = (function(){
 		Data.filter.matchQuantity = Data.deals.length;
 	}
 	actions.sortDeals = function(propertyName){
+		var nonAlphanum = /[^a-zA-Z0-9 ]/g;
 		Data.sortProperty = propertyName;
 		Data.sortDirection = (Data.sortDirection == 'asc' ? 'desc' : 'asc');
 		Data.deals.sort(function(a, b){
-			var valA = (parseFloat(a[propertyName]) || a[propertyName]);
-			var valB = (parseFloat(b[propertyName]) || b[propertyName]);
-			if(isNaN(valA) || isNaN(valB)){
-				valA = a[propertyName].toString().replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-				valB = b[propertyName].toString().replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-			}
+			var valA = a[propertyName].toString().replace(nonAlphanum, '').toLowerCase();
+			var valB = b[propertyName].toString().replace(nonAlphanum, '').toLowerCase();
+			valA = (parseFloat(valA) === 0 ? 0 : (parseFloat(valA) || a[propertyName]));
+			valB = (parseFloat(valB) === 0 ? 0 : (parseFloat(valB) || a[propertyName]));
 			if(Data.sortDirection == 'asc'){
 				return(valA > valB ? 1 : -1)
 			}else{
