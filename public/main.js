@@ -1,5 +1,15 @@
 'use strict';
 
+m._boundInput = function(stream, attrs){
+	var attrs = (attrs || {});
+	attrs.value = stream();
+	attrs.oninput = function(event){
+		event.redraw = false;
+		m.withAttr('value', stream).call({}, event);
+	};
+	return attrs;
+};
+
 (function(){
 
 	var Properties = {
@@ -32,30 +42,20 @@
 			})
 		}, dateString);
 	}
+	help.query = function(paramsObject){
+		var query = m.parseQueryString(window.location.search);
+		if(paramsObject){
+			for(var key in paramsObject){
+				query[key] = paramsObject[key];
+			}
+			window.location.search = m.buildQueryString(query);
+		}
+		return query;
+	}
 
 	var DealsList = (function(){
 
 		var actions = {};
-		actions.appendToList = function(input){
-			var deal = {
-				dealId: input.dealId
-			};
-			for(var name in Properties.all){
-				var value = ((input.properties[name] || {}).value || null);
-				switch(Properties.all[name][1]){
-					case 'date':
-						deal[name] = (parseInt(value) || 0); break;
-					case 'integer':
-						deal[name] = (parseInt(value) || 0); break;
-					case 'float':
-						deal[name] = (parseFloat(value) || 0); break;
-					default:
-						deal[name] = value;
-				}
-			}
-			models.dealsById[input.dealId] = deal;
-			return deal;
-		}
 		actions.loadDeals = function(){
 			models.loading.offset = 0;
 			models.deals = [];
@@ -75,7 +75,7 @@
 		}
 		actions.parseResponse = function(response){
 			if(response.success && models.loading.continue){
-				response.deals.forEach(actions.appendToList);
+				response.deals.forEach(actions.parseOneDeal);
 				models.loading.offset = response.offset;
 				models.loading.total = (0 || models.loading.total) + response.deals.length;
 			}
@@ -83,9 +83,38 @@
 				actions.loadNextPage();
 			}else{
 				models.serverResponse = response.message;
-				models.deals = Object.values(models.dealsById);
+				actions.filterAndAppendDeals();
 				models.loading.continue = false;
 			}
+		}
+		actions.parseOneDeal = function(input){
+			var deal = {
+				dealId: input.dealId
+			};
+			for(var name in Properties.all){
+				var value = ((input.properties[name] || {}).value || null);
+				switch(Properties.all[name][1]){
+					case 'date':
+						deal[name] = (parseInt(value) || 0); break;
+					case 'integer':
+						deal[name] = (parseInt(value) || 0); break;
+					case 'float':
+						deal[name] = (parseFloat(value) || 0); break;
+					default:
+						deal[name] = value;
+				}
+			}
+			models.dealsById[input.dealId] = deal;
+			return deal;
+		}
+		actions.filterAndAppendDeals = function(){
+			models.deals = [];
+			Object.values(models.dealsById).forEach(function(deal){
+				if(deal['probability_'] >= models.filter.probability_low()
+				&& deal['probability_'] <= models.filter.probability_high()){
+					models.deals.push(deal);
+				}
+			});
 		}
 
 		var events = {};
@@ -123,7 +152,11 @@
 			dealsById: {},
 			serverResponse: '',
 			sortProperty: '',
-			sortDirection: ''
+			sortDirection: '',
+			filter: {
+				probability_low: m.stream(help.query().probability_low || 50),
+				probability_high: m.stream(help.query().probability_high || 100)
+			}
 		}
 
 		var views = {};
@@ -160,7 +193,23 @@
 				onclick: m.withAttr('sort_property', events.sort),
 			}
 		}
-		views.controls = function(){
+		views.filter = function(){
+			return [
+				m('span', 'Probability between '),
+				m('input', m._boundInput(models.filter.probability_low, {
+					type: 'number',
+					min: 0,
+					max: 100
+				})),
+				m('span', ' and '),
+				m('input', m._boundInput(models.filter.probability_high, {
+					type: 'number', 
+					min: 0,
+					max: 100
+				}))
+			]
+		}
+		views.triggers = function(){
 			var output = [];
 			if(models.loading.continue){
 				output.push(m('button', {onclick: events.stopLoading}, 'Cancel'));
@@ -176,7 +225,8 @@
 		return {
 			view: function(){
 				return [
-					views.controls(),
+					m('p', views.filter()),
+					m('p', views.triggers()),
 					views.listTable()
 				]
 			}
