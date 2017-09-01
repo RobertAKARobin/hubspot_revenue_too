@@ -1,0 +1,12 @@
+table, td, th{
+	vertical-align: top;
+	text-align: left;
+	border-collapse:collapse;
+	border:1px solid #aaa;
+}
+th, td{
+	padding:3px 5px;
+}
+th{
+	background-color:#ddd;
+}
