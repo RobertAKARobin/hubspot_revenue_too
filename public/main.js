@@ -106,7 +106,7 @@ var DealsList = (function(){
 				case 'dollars':
 					deal[name] = '$' + (parseFloat(value) || 0).toFixed(2); break;
 				default:
-					deal[name] = value;
+					deal[name] = (value || '');
 			}
 		}
 		Data.dealsById[input.dealId] = deal;
@@ -130,8 +130,8 @@ var DealsList = (function(){
 		Data.deals.sort(function(a, b){
 			var valA = a[propertyName].toString().replace(nonAlphanum, '').toLowerCase();
 			var valB = b[propertyName].toString().replace(nonAlphanum, '').toLowerCase();
-			valA = (parseFloat(valA) === 0 ? 0 : (parseFloat(valA) || a[propertyName]));
-			valB = (parseFloat(valB) === 0 ? 0 : (parseFloat(valB) || a[propertyName]));
+			valA = (isNaN(valA) ? valA : parseFloat(valA));
+			valB = (isNaN(valB) ? valB : parseFloat(valB));
 			if(Data.sortDirection == 'asc'){
 				return(valA > valB ? 1 : -1)
 			}else{
