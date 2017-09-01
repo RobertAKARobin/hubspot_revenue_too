@@ -35,22 +35,43 @@
 
 		var actions = {};
 		actions.loadDeals = function(){
-			models.isLoading = true;
-			m.request({
-				url: '/deals'
-			}).then(function(response){
-				if(response.success){
-					models.deals = response.results.map(Deal.format);
-				}else{
-					models.serverResponse = response.message;
-				}
-				models.isLoading = false;
-			});
+			models.deals = [];
+			models.loading.continue = true;
+			models.loading.offset = null;
+			models.loading.total = null;
+			loadMore();
+
+			function loadMore(){
+				m.request({
+					url: '/deals',
+					data: {
+						count: 100,
+						offset: (models.loading.offset || 0)
+					}
+				}).then(function(response){
+					if(response.success && models.loading.continue){
+						models.deals = models.deals.concat(response.results.map(Deal.format));
+						models.loading.offset = response.offset;
+						models.loading.total = response.total;
+						models.loading.currently = true;
+					}
+					if(response.success && response.hasMore && models.loading.continue){
+						loadMore();
+					}else{
+						models.serverResponse = response.message;
+						models.loading.currently = false;
+						models.loading.continue = false;
+					}
+				});
+			}
 		}
 
 		var events = {};
 		events.loadDeals = function(event){
 			actions.loadDeals();
+		}
+		events.stopLoading = function(event){
+			models.loading.continue = false;
 		}
 		events.sort = function(propertyName){
 			models.sortProperty = propertyName;
@@ -71,7 +92,12 @@
 		}
 
 		var models = {
-			isLoading: false,
+			loading: {
+				currently: false,
+				continue: false,
+				offset: null,
+				total: null
+			},
 			deals: [],
 			serverResponse: '',
 			sortProperty: '',
@@ -112,11 +138,23 @@
 				onclick: m.withAttr('sort_property', events.sort),
 			}
 		}
+		views.controls = function(){
+			var output = [];
+			if(models.loading.continue){
+				output.push(m('button', {onclick: events.stopLoading}, 'Cancel'));
+			}else{
+				output.push(m('button', {onclick: events.loadDeals}, 'Load'));
+			}
+			if(models.loading.total !== null){
+				output.push(m('span', 'Showing ' + models.loading.offset + ' of ' + models.loading.total));
+			}
+			return output;
+		}
 
 		return {
 			view: function(){
 				return [
-					m('button', {onclick: events.loadDeals}, 'Load'),
+					views.controls(),
 					views.listTable()
 				]
 			}
