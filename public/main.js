@@ -61,6 +61,7 @@ m._boundInput = function(stream, attrs){
 			models.deals = [];
 			models.dealsById = {};
 			models.loading.continue = true;
+			models.filter.matchQuantity = null;
 			actions.loadNextPage();
 		}
 		actions.loadNextPage = function(){
@@ -108,6 +109,7 @@ m._boundInput = function(stream, attrs){
 			return deal;
 		}
 		actions.filterAndAppendDeals = function(){
+			models.filter.matchQuantity = null;
 			models.deals = [];
 			Object.values(models.dealsById).forEach(function(deal){
 				if(deal['probability_'] >= models.filter.probability_low()
@@ -115,6 +117,7 @@ m._boundInput = function(stream, attrs){
 					models.deals.push(deal);
 				}
 			});
+			models.filter.matchQuantity = models.deals.length;
 		}
 		actions.sortDeals = function(propertyName){
 			models.sortProperty = propertyName;
@@ -160,6 +163,7 @@ m._boundInput = function(stream, attrs){
 			sortProperty: '',
 			sortDirection: '',
 			filter: {
+				matchQuantity: null,
 				probability_low: m.stream(help.query().probability_low || 50),
 				probability_high: m.stream(help.query().probability_high || 100)
 			}
@@ -224,7 +228,10 @@ m._boundInput = function(stream, attrs){
 				output.push(m('button', {onclick: events.loadDeals}, 'Load'));
 			}
 			if(models.loading.total !== null){
-				output.push(m('span', 'Counting ' + models.loading.total));
+				output.push(m('span', models.loading.total + ' loaded'))
+			}
+			if(models.filter.matchQuantity !== null){
+				output.push(m('span', ', ' + models.filter.matchQuantity + ' match'))
 			}
 			return output;
 		}
