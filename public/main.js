@@ -116,15 +116,7 @@ m._boundInput = function(stream, attrs){
 				}
 			});
 		}
-
-		var events = {};
-		events.loadDeals = function(event){
-			actions.loadDeals();
-		}
-		events.stopLoading = function(event){
-			models.loading.continue = false;
-		}
-		events.sort = function(propertyName){
+		actions.sortDeals = function(propertyName){
 			models.sortProperty = propertyName;
 			models.sortDirection = (models.sortDirection == 'asc' ? 'desc' : 'asc');
 			models.deals.sort(function(a, b){
@@ -140,6 +132,20 @@ m._boundInput = function(stream, attrs){
 					return(valA < valB ? 1 : -1)
 				}
 			});
+		}
+
+		var events = {};
+		events.loadDeals = function(event){
+			actions.loadDeals();
+		}
+		events.stopLoading = function(event){
+			models.loading.continue = false;
+		}
+		events.sort = function(propertyName){
+			actions.sortDeals(propertyName);
+		}
+		events.filter = function(event){
+			actions.filterAndAppendDeals();
 		}
 
 		var models = {
@@ -206,7 +212,8 @@ m._boundInput = function(stream, attrs){
 					type: 'number', 
 					min: 0,
 					max: 100
-				}))
+				})),
+				m('button', {onclick: events.filter}, 'Filter')
 			]
 		}
 		views.triggers = function(){
