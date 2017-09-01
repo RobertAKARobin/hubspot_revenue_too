@@ -2,6 +2,26 @@
 
 (function(){
 
+	var help = {}
+	help.date = function(input){
+		input = parseInt(input);
+		if(!input) return false;
+		var dateObject = new Date(input);
+		var dateString = dateObject.toISOString().split('T')[0].substring(2);
+		return m('span', {
+			timestamp: dateObject.getTime(),
+			title: dateObject.toLocaleString('fullwide', {
+				weekday: 'short',
+				year: 'numeric',
+				month: 'short',
+				day: '2-digit',
+				hour: '2-digit',
+				minute: '2-digit',
+				timeZoneName: 'short'
+			})
+		}, dateString);
+	}
+
 	var Deal = {};
 	Deal.format = function(deal){
 		var output = {};
@@ -75,11 +95,11 @@
 		views.bodyRow = function(deal, index){
 			return m('tr', [
 				m('th', (models.deals.length - index)),
-				m('td', deal.createdate),
+				m('td', help.date(deal.createdate)),
 				m('td', deal.dealname),
 				m('td', deal.probability_),
 				m('td', '$'+ deal.amount),
-				m('td', deal.closedate)
+				m('td', help.date(deal.closedate))
 			]);
 		}
 		views.listTable = function(){
