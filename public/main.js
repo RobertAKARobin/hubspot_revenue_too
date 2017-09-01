@@ -1,5 +1,16 @@
 'use strict';
 
+var Properties = {
+	all: {
+		'createdate':	['Created', 'date'],
+		'dealname':		['Name', 'string'],
+		'probability_':	['Probability', 'integer'],
+		'amount':		['Amount', 'dollars'],
+		'closedate':	['Close date', 'date']
+	}
+}
+Properties.toString = Object.keys(Properties.all).join(',');
+
 m._boundInput = function(stream, attrs){
 	var attrs = (attrs || {});
 	attrs.value = stream();
@@ -12,22 +23,8 @@ m._boundInput = function(stream, attrs){
 
 var help = {}
 help.date = function(input){
-	input = parseInt(input);
-	if(!input) return false;
-	var dateObject = new Date(input);
-	var dateString = dateObject.toISOString().split('T')[0].substring(2);
-	return m('span', {
-		timestamp: dateObject.getTime(),
-		title: dateObject.toLocaleString('fullwide', {
-			weekday: 'short',
-			year: 'numeric',
-			month: 'short',
-			day: '2-digit',
-			hour: '2-digit',
-			minute: '2-digit',
-			timeZoneName: 'short'
-		})
-	}, dateString);
+	var dateObject = new Date(parseInt(input) || 0);
+	return dateObject.toISOString().split('T')[0].substring(2);
 }
 help.query = function(paramsObject){
 	var query = m.parseQueryString(window.location.search);
@@ -39,17 +36,6 @@ help.query = function(paramsObject){
 	}
 	return query;
 }
-
-var Properties = {
-	all: {
-		'createdate':	['Created', 'date'],
-		'dealname':		['Name', 'string'],
-		'probability_':	['Probability', 'integer'],
-		'amount':		['Amount', 'float'],
-		'closedate':	['Close date', 'date']
-	}
-}
-Properties.toString = Object.keys(Properties.all).join(',');
 
 var Data = {
 	loading: {
@@ -112,10 +98,12 @@ var DealsList = (function(){
 			var value = ((input.properties[name] || {}).value || null);
 			switch(Properties.all[name][1]){
 				case 'date':
-					deal[name] = (parseInt(value) || 0); break;
+					deal[name] = help.date(value); break;
 				case 'integer':
 					deal[name] = (parseInt(value) || 0); break;
 				case 'float':
+					deal[name] = (parseFloat(value) || 0); break;
+				case 'dollars':
 					deal[name] = (parseFloat(value) || 0); break;
 				default:
 					deal[name] = value;
@@ -169,24 +157,24 @@ var DealsList = (function(){
 
 	var views = {};
 	views.headerRow = function(){
-		return m('tr', [
-			m('th', ''),
-			m('th', views.sortable('createdate'), 'Created'),
-			m('th', views.sortable('dealname'), 'Name'),
-			m('th', views.sortable('probability_'), 'Probability'),
-			m('th', views.sortable('amount'), 'Amount'),
-			m('th', views.sortable('closedate'), 'Close date')
-		]);
+		var output = [
+			m('th', '')
+		];
+		var property;
+		for(var propertyName in Properties.all){
+			property = Properties.all[propertyName];
+			output.push(m('th', views.sortable(propertyName), property[0]));
+		}
+		return m('tr', output);
 	}
 	views.bodyRow = function(deal, index){
-		return m('tr', [
-			m('th', (Data.deals.length - index)),
-			m('td', help.date(deal.createdate)),
-			m('td', deal.dealname),
-			m('td', deal.probability_),
-			m('td', '$'+ deal.amount),
-			m('td', help.date(deal.closedate))
-		]);
+		var output = [
+			m('th', (Data.deals.length - index))
+		];
+		for(var propertyName in Properties.all){
+			output.push(m('td', deal[propertyName]));
+		}
+		return m('tr', output);
 	}
 	views.listTable = function(){
 		return m('table', [
