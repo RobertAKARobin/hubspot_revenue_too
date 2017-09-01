@@ -17,7 +17,10 @@
 		actions.loadDeals = function(){
 			models.isLoading = true;
 			m.request({
-				url: '/deals'
+				url: '/deals',
+				data: {
+					count: 10
+				}
 			}).then(function(response){
 				if(response.success){
 					models.deals = response.results.results.map(Deal.format);
@@ -32,22 +35,41 @@
 		events.loadDeals = function(event){
 			actions.loadDeals();
 		}
+		events.sort = function(propertyName){
+			models.sortProperty = propertyName;
+			models.sortDirection = (models.sortDirection == 'asc' ? 'desc' : 'asc');
+			models.deals.sort(function(a, b){
+				var valA = (parseFloat(a[propertyName]) || a[propertyName]);
+				var valB = (parseFloat(b[propertyName]) || b[propertyName]);
+				if(isNaN(valA) || isNaN(valB)){
+					valA = a[propertyName].toString().replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+					valB = b[propertyName].toString().replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+				}
+				if(models.sortDirection == 'asc'){
+					return(valA > valB ? 1 : -1)
+				}else{
+					return(valA < valB ? 1 : -1)
+				}
+			});
+		}
 
 		var models = {
 			isLoading: false,
 			deals: [],
-			serverResponse: ''
+			serverResponse: '',
+			sortProperty: '',
+			sortDirection: ''
 		}
 
 		var views = {};
 		views.headerRow = function(){
 			return m('tr', [
 				m('th', ''),
-				m('th', 'Created'),
-				m('th', 'Name'),
-				m('th', 'Probability'),
-				m('th', 'Amount'),
-				m('th', 'Close date')
+				m('th', views.sortable('createdate'), 'Created'),
+				m('th', views.sortable('dealname'), 'Name'),
+				m('th', views.sortable('probability_'), 'Probability'),
+				m('th', views.sortable('amount'), 'Amount'),
+				m('th', views.sortable('closedate'), 'Close date')
 			]);
 		}
 		views.bodyRow = function(deal, index){
@@ -65,6 +87,13 @@
 				views.headerRow(),
 				models.deals.map(views.bodyRow)
 			]);
+		}
+		views.sortable = function(propertyName){
+			return {
+				sort_property: propertyName,
+				sorting: (propertyName == models.sortProperty ? models.sortDirection : ''),
+				onclick: m.withAttr('sort_property', events.sort),
+			}
 		}
 
 		return {

@@ -10,3 +10,17 @@ th, td{
 th{
 	background-color:#ddd;
 }
+[sorting]{
+	text-decoration:underline;
+	color:blue;
+	cursor:pointer;
+}
+[sorting=""]{
+	color:black;
+}
+[sorting="asc"]:after{
+	content: " \2191";
+}
+[sorting="desc"]:after{
+	content: " \2193";
+}
