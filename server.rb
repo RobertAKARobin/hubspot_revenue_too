@@ -15,12 +15,19 @@ get "/api" do
 end
 
 get "/deals" do
-	params[:hapikey] ||= ENV["HAPIKEY"]
-	params[:count] ||= 10
-	params[:since] = (params[:since] || 0).to_i * 1000
-	params[:offset] ||= 0
+	query = []
+	query.push("hapikey=#{ENV["HAPIKEY"]}")
+	query.push("limit=#{params[:limit] || 10}")
+	query.push("offset=#{params[:offset] || 0}")
+
+	params[:properties] ||= ""
+	params[:properties].split(",").each do |property|
+		query.push("properties=#{property}")
+	end
+	query = query.join("&")
+
 	begin
-		response = HTTParty.get("https://api.hubapi.com/deals/v1/deal/recent/modified", {query: params})
+		response = HTTParty.get("https://api.hubapi.com/deals/v1/deal/paged?#{query}")
 		response[:success] = true
 		return json(response.to_h)
 	rescue Exception => error

@@ -2,6 +2,17 @@
 
 (function(){
 
+	var Properties = {
+		all: {
+			'createdate':	['Created', 'date'],
+			'dealname':		['Name', 'string'],
+			'probability_':	['Probability', 'integer'],
+			'amount':		['Amount', 'float'],
+			'closedate':	['Close date', 'date']
+		}
+	}
+	Properties.toString = Object.keys(Properties.all).join(',');
+
 	var help = {}
 	help.date = function(input){
 		input = parseInt(input);
@@ -22,47 +33,58 @@
 		}, dateString);
 	}
 
-	var Deal = {};
-	Deal.format = function(deal){
-		var output = {};
-		for(var propertyName in deal.properties){
-			output[propertyName] = deal.properties[propertyName].value;
-		}
-		return output;
-	}
-
 	var DealsList = (function(){
 
 		var actions = {};
+		actions.appendToList = function(input){
+			var deal = {
+				dealId: input.dealId
+			};
+			for(var name in Properties.all){
+				var value = ((input.properties[name] || {}).value || null);
+				switch(Properties.all[name][1]){
+					case 'date':
+						deal[name] = parseInt(value); break;
+					case 'integer':
+						deal[name] = parseInt(value); break;
+					case 'float':
+						deal[name] = parseFloat(value); break;
+					default:
+						deal[name] = value;
+				}
+			}
+			models.dealsById[input.dealId] = deal;
+			return deal;
+		}
 		actions.loadDeals = function(){
+			models.loading.offset = 0;
 			models.deals = [];
+			models.dealsById = {};
 			models.loading.continue = true;
-			models.loading.offset = null;
-			models.loading.total = null;
-			loadMore();
-
-			function loadMore(){
-				m.request({
-					url: '/deals',
-					data: {
-						count: 100,
-						offset: (models.loading.offset || 0)
-					}
-				}).then(function(response){
-					if(response.success && models.loading.continue){
-						models.deals = models.deals.concat(response.results.map(Deal.format));
-						models.loading.offset = response.offset;
-						models.loading.total = response.total;
-						models.loading.currently = true;
-					}
-					if(response.success && response.hasMore && models.loading.continue){
-						loadMore();
-					}else{
-						models.serverResponse = response.message;
-						models.loading.currently = false;
-						models.loading.continue = false;
-					}
-				});
+			actions.loadNextPage();
+		}
+		actions.loadNextPage = function(){
+			m.request({
+				url: '/deals',
+				data: {
+					limit: 250,
+					offset: (models.loading.offset || 0),
+					properties: Properties.toString
+				}
+			}).then(actions.parseResponse);
+		}
+		actions.parseResponse = function(response){
+			if(response.success && models.loading.continue){
+				response.deals.forEach(actions.appendToList);
+				models.loading.offset = response.offset;
+				models.loading.total = (0 || models.loading.total) + response.deals.length;
+			}
+			if(response.success && response.hasMore && models.loading.continue){
+				actions.loadNextPage();
+			}else{
+				models.serverResponse = response.message;
+				models.deals = Object.values(models.dealsById);
+				models.loading.continue = false;
 			}
 		}
 
@@ -93,12 +115,12 @@
 
 		var models = {
 			loading: {
-				currently: false,
-				continue: false,
-				offset: null,
-				total: null
+				total: null,
+				offset: 0,
+				continue: false
 			},
 			deals: [],
+			dealsById: {},
 			serverResponse: '',
 			sortProperty: '',
 			sortDirection: ''
@@ -146,7 +168,7 @@
 				output.push(m('button', {onclick: events.loadDeals}, 'Load'));
 			}
 			if(models.loading.total !== null){
-				output.push(m('span', 'Showing ' + models.loading.offset + ' of ' + models.loading.total));
+				output.push(m('span', 'Counting ' + models.loading.total));
 			}
 			return output;
 		}
