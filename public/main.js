@@ -37,13 +37,10 @@
 		actions.loadDeals = function(){
 			models.isLoading = true;
 			m.request({
-				url: '/deals',
-				data: {
-					count: 10
-				}
+				url: '/deals'
 			}).then(function(response){
 				if(response.success){
-					models.deals = response.results.results.map(Deal.format);
+					models.deals = response.results.map(Deal.format);
 				}else{
 					models.serverResponse = response.message;
 				}

@@ -16,15 +16,13 @@ end
 
 get "/deals" do
 	params[:hapikey] ||= ENV["HAPIKEY"]
-	params[:count] ||= 100
+	params[:count] ||= 10
 	params[:since] = (params[:since] || 0).to_i * 1000
 	params[:offset] ||= 0
 	begin
 		response = HTTParty.get("https://api.hubapi.com/deals/v1/deal/recent/modified", {query: params})
-		return json({
-			success: true,
-			results: response.to_h
-		})
+		response[:success] = true
+		return json(response.to_h)
 	rescue Exception => error
 		return json({
 			success: false,
