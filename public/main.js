@@ -44,11 +44,11 @@
 				var value = ((input.properties[name] || {}).value || null);
 				switch(Properties.all[name][1]){
 					case 'date':
-						deal[name] = parseInt(value); break;
+						deal[name] = (parseInt(value) || 0); break;
 					case 'integer':
-						deal[name] = parseInt(value); break;
+						deal[name] = (parseInt(value) || 0); break;
 					case 'float':
-						deal[name] = parseFloat(value); break;
+						deal[name] = (parseFloat(value) || 0); break;
 					default:
 						deal[name] = value;
 				}
