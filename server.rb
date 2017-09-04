@@ -3,7 +3,6 @@ require "sinatra"
 require "sinatra/reloader" if development?
 require "sinatra/json"
 require "date"
-require "pry"
 require "httparty"
 
 get "/" do

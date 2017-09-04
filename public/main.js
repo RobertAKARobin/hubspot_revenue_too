@@ -6,7 +6,8 @@ var Properties = {
 		'dealname':		['Name', 'string'],
 		'probability_':	['Probability', 'integer'],
 		'amount':		['Amount', 'dollars'],
-		'closedate':	['Close date', 'date']
+		'closedate':	['Close date', 'date'],
+		'timeline':		['Timeline', 'string']
 	}
 }
 Properties.toString = Object.keys(Properties.all).join(',');
@@ -41,7 +42,7 @@ var Data = {
 	loading: {
 		total: null,
 		offset: 0,
-		continue: false
+		doContinue: false
 	},
 	deals: [],
 	dealsById: {},
@@ -62,7 +63,7 @@ var DealsList = (function(){
 		Data.loading.offset = 0;
 		Data.deals = [];
 		Data.dealsById = {};
-		Data.loading.continue = true;
+		Data.loading.doContinue = true;
 		Data.filter.matchQuantity = null;
 		actions.loadNextPage();
 	}
@@ -77,17 +78,17 @@ var DealsList = (function(){
 		}).then(actions.parseResponse);
 	}
 	actions.parseResponse = function(response){
-		if(response.success && Data.loading.continue){
+		if(response.success && Data.loading.doContinue){
 			response.deals.forEach(actions.parseOneDeal);
 			Data.loading.offset = response.offset;
 			Data.loading.total = (0 || Data.loading.total) + response.deals.length;
 		}
-		if(response.success && response.hasMore && Data.loading.continue){
+		if(response.success && response.hasMore && Data.loading.doContinue){
 			actions.loadNextPage();
 		}else{
 			Data.serverResponse = response.message;
 			actions.filterAndAppendDeals();
-			Data.loading.continue = false;
+			Data.loading.doContinue = false;
 		}
 	}
 	actions.parseOneDeal = function(input){
@@ -130,13 +131,15 @@ var DealsList = (function(){
 		Data.deals.sort(function(a, b){
 			var valA = a[propertyName].toString().replace(nonAlphanum, '').toLowerCase();
 			var valB = b[propertyName].toString().replace(nonAlphanum, '').toLowerCase();
-			valA = (isNaN(valA) ? valA : parseFloat(valA));
-			valB = (isNaN(valB) ? valB : parseFloat(valB));
-			if(Data.sortDirection == 'asc'){
-				return(valA > valB ? 1 : -1)
-			}else{
-				return(valA < valB ? 1 : -1)
+			var output = 0;
+			valA = (isNaN(valA) ? valA : parseFloat(valA) || '');
+			valB = (isNaN(valB) ? valB : parseFloat(valB) || '');
+			if(valA > valB){
+				output = (Data.sortDirection == 'asc' ? 1 : -1);
+			}else if(valA < valB){
+				output = (Data.sortDirection == 'asc' ? -1 : 1);
 			}
+			return output;
 		});
 	}
 
@@ -145,7 +148,7 @@ var DealsList = (function(){
 		actions.loadDeals();
 	}
 	events.stopLoading = function(event){
-		Data.loading.continue = false;
+		Data.loading.doContinue = false;
 	}
 	events.sort = function(propertyName){
 		actions.sortDeals(propertyName);
@@ -207,7 +210,7 @@ var DealsList = (function(){
 	}
 	views.triggers = function(){
 		var output = [];
-		if(Data.loading.continue){
+		if(Data.loading.doContinue){
 			output.push(m('button', {onclick: events.stopLoading}, 'Cancel'));
 		}else{
 			output.push(m('button', {onclick: events.loadDeals}, 'Load'));
