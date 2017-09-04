@@ -7,7 +7,7 @@ var Properties = {
 		'probability_':	['Probability', 'integer'],
 		'amount':		['Amount', 'dollars'],
 		'closedate':	['Close date', 'date'],
-		'timeline':		['Timeline', 'string']
+		'timeline':		['Timeline', 'string', 'editable']
 	}
 }
 Properties.toString = Object.keys(Properties.all).join(',');
@@ -100,15 +100,20 @@ var DealsList = (function(){
 			var value = ((input.properties[name] || {}).value || null);
 			switch(Properties.all[name][1]){
 				case 'date':
-					deal[name] = help.date(value); break;
+					value = help.date(value); break;
 				case 'integer':
-					deal[name] = (parseInt(value) || 0); break;
+					value = (parseInt(value) || 0); break;
 				case 'float':
-					deal[name] = (parseFloat(value) || 0); break;
+					value = (parseFloat(value) || 0); break;
 				case 'dollars':
-					deal[name] = '$' + (parseFloat(value) || 0).toFixed(2); break;
+					value = '$' + (parseFloat(value) || 0).toFixed(2); break;
 				default:
-					deal[name] = (value || '');
+					value = (value || '');
+			}
+			if(Properties.all[name][2] == 'editable'){
+				deal[name] = m.stream(value)
+			}else{
+				deal[name] = value;
 			}
 		}
 		Data.dealsById[input.dealId] = deal;
@@ -157,6 +162,18 @@ var DealsList = (function(){
 	events.filter = function(event){
 		actions.filterAndAppendDeals();
 	}
+	events.update = function(event){
+		var deal = this;
+		m.request({
+			url: '/deals/' + deal.dealId,
+			method: 'PUT',
+			data: {
+				deal: deal
+			}
+		}).then(function(response){
+			console.log(response)
+		});
+	}
 
 	var views = {};
 	views.headerRow = function(){
@@ -168,6 +185,7 @@ var DealsList = (function(){
 			property = Properties.all[propertyName];
 			output.push(m('th', views.sortable(propertyName), property[0]));
 		}
+		output.push(m('th', ''));
 		return m('tr', output);
 	}
 	views.bodyRow = function(deal, index){
@@ -181,10 +199,19 @@ var DealsList = (function(){
 						href: 'https://app.hubspot.com/sales/211554/deal/' + deal.dealId
 					}, deal.dealname)
 				]))
+			}else if(Properties.all[propertyName][2] == 'editable'){
+				output.push(m('td', [
+					m('input', m._boundInput(deal[propertyName]))
+				]));
 			}else{
 				output.push(m('td', deal[propertyName]));
 			}
 		}
+		output.push(m('td', [
+			m('button', {
+				onclick: events.update.bind(deal)
+			}, 'Update')
+		]));
 		return m('tr', output);
 	}
 	views.listTable = function(){

@@ -36,3 +36,9 @@ get "/deals" do
 		})
 	end
 end
+
+put "/deals/:dealId" do
+	request.body.rewind
+	data = JSON.parse(request.body.read)
+	return json({success: true, data: data})
+end
