@@ -175,7 +175,15 @@ var DealsList = (function(){
 			m('th', (Data.deals.length - index))
 		];
 		for(var propertyName in Properties.all){
-			output.push(m('td', deal[propertyName]));
+			if(propertyName == 'dealname'){
+				output.push(m('td', [
+					m('a', {
+						href: 'https://app.hubspot.com/sales/211554/deal/' + deal.dealId
+					}, deal.dealname)
+				]))
+			}else{
+				output.push(m('td', deal[propertyName]));
+			}
 		}
 		return m('tr', output);
 	}
