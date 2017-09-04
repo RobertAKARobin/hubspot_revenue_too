@@ -60,10 +60,11 @@ var DealsList = (function(){
 
 	var actions = {};
 	actions.loadDeals = function(){
+		Data.loading.total = null;
 		Data.loading.offset = 0;
+		Data.loading.doContinue = true;
 		Data.deals = [];
 		Data.dealsById = {};
-		Data.loading.doContinue = true;
 		Data.filter.matchQuantity = null;
 		actions.loadNextPage();
 	}
@@ -129,9 +130,9 @@ var DealsList = (function(){
 		Data.sortProperty = propertyName;
 		Data.sortDirection = (Data.sortDirection == 'asc' ? 'desc' : 'asc');
 		Data.deals.sort(function(a, b){
+			var output = 0;
 			var valA = a[propertyName].toString().replace(nonAlphanum, '').toLowerCase();
 			var valB = b[propertyName].toString().replace(nonAlphanum, '').toLowerCase();
-			var output = 0;
 			valA = (isNaN(valA) ? valA : parseFloat(valA) || '');
 			valB = (isNaN(valB) ? valB : parseFloat(valB) || '');
 			if(valA > valB){
