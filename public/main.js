@@ -1,17 +1,5 @@
 'use strict';
 
-var Properties = {
-	all: {
-		'createdate':	['Created', 'date'],
-		'dealname':		['Name', 'string'],
-		'probability_':	['Probability', 'integer'],
-		'amount':		['Amount', 'dollars'],
-		'closedate':	['Close date', 'date'],
-		'timeline':		['Timeline', 'string', 'editable']
-	}
-}
-Properties.toString = Object.keys(Properties.all).join(',');
-
 m._boundInput = function(stream, attrs){
 	var attrs = (attrs || {});
 	attrs.value = stream();
@@ -74,7 +62,7 @@ var DealsList = (function(){
 			data: {
 				limit: 250,
 				offset: (Data.loading.offset || 0),
-				properties: Properties.toString
+				properties: ['createdate', 'dealname', 'probability_', 'amount', 'closedate', 'timeline'].join(',')
 			}
 		}).then(actions.parseResponse);
 	}
@@ -96,26 +84,15 @@ var DealsList = (function(){
 		var deal = {
 			dealId: input.dealId
 		};
-		for(var name in Properties.all){
-			var value = ((input.properties[name] || {}).value || null);
-			switch(Properties.all[name][1]){
-				case 'date':
-					value = help.date(value); break;
-				case 'integer':
-					value = (parseInt(value) || 0); break;
-				case 'float':
-					value = (parseFloat(value) || 0); break;
-				case 'dollars':
-					value = '$' + (parseFloat(value) || 0).toFixed(2); break;
-				default:
-					value = (value || '');
-			}
-			if(Properties.all[name][2] == 'editable'){
-				deal[name] = m.stream(value)
+		for(var propertyName in input.properties){
+			var value = (input.properties[propertyName] || {}).value;
+			if(value === 0){
+				deal[propertyName] = 0;
 			}else{
-				deal[name] = value;
+				deal[propertyName] = (value || '');
 			}
 		}
+		deal.timeline = m.stream(deal.timeline || '');
 		Data.dealsById[input.dealId] = deal;
 		return deal;
 	}
@@ -136,8 +113,8 @@ var DealsList = (function(){
 		Data.sortDirection = (Data.sortDirection == 'asc' ? 'desc' : 'asc');
 		Data.deals.sort(function(a, b){
 			var output = 0;
-			var valA = a[propertyName].toString().replace(nonAlphanum, '').toLowerCase();
-			var valB = b[propertyName].toString().replace(nonAlphanum, '').toLowerCase();
+			var valA = (a[propertyName] || '').toString().replace(nonAlphanum, '').toLowerCase();
+			var valB = (b[propertyName] || '').toString().replace(nonAlphanum, '').toLowerCase();
 			valA = (isNaN(valA) ? valA : parseFloat(valA) || '');
 			valB = (isNaN(valB) ? valB : parseFloat(valB) || '');
 			if(valA > valB){
@@ -177,41 +154,38 @@ var DealsList = (function(){
 
 	var views = {};
 	views.headerRow = function(){
-		var output = [
+		return m('tr', [
+			m('th', ''),
+			m('th', views.sortable('createdate'), 'Created'),
+			m('th', views.sortable('dealname'), 'Name'),
+			m('th', views.sortable('probability_'), 'Probability'),
+			m('th', views.sortable('amount'), 'Amount'),
+			m('th', views.sortable('closedate'), 'Close date'),
+			m('th', views.sortable('timeline'), 'Timeline'),
 			m('th', '')
-		];
-		var property;
-		for(var propertyName in Properties.all){
-			property = Properties.all[propertyName];
-			output.push(m('th', views.sortable(propertyName), property[0]));
-		}
-		output.push(m('th', ''));
-		return m('tr', output);
+		]);
 	}
 	views.bodyRow = function(deal, index){
 		var output = [
-			m('th', (Data.deals.length - index))
+			m('th', (Data.deals.length - index)),
+			m('td', help.date(deal.createdate)),
+			m('td', [
+				m('a', {
+					href: 'https://app.hubspot.com/sales/211554/deal/' + deal.dealId
+				}, deal.dealname),
+			]),
+			m('td', deal['probability_']),
+			m('td', '$' + (parseFloat(deal.amount) || 0).toFixed(2)),
+			m('td', help.date(deal.closedate)),
+			m('td', [
+				m('input', m._boundInput(deal.timeline))
+			]),
+			m('td', [
+				m('button', {
+					onclick: events.update.bind(deal)
+				}, 'Update')
+			])
 		];
-		for(var propertyName in Properties.all){
-			if(propertyName == 'dealname'){
-				output.push(m('td', [
-					m('a', {
-						href: 'https://app.hubspot.com/sales/211554/deal/' + deal.dealId
-					}, deal.dealname)
-				]))
-			}else if(Properties.all[propertyName][2] == 'editable'){
-				output.push(m('td', [
-					m('input', m._boundInput(deal[propertyName]))
-				]));
-			}else{
-				output.push(m('td', deal[propertyName]));
-			}
-		}
-		output.push(m('td', [
-			m('button', {
-				onclick: events.update.bind(deal)
-			}, 'Update')
-		]));
 		return m('tr', output);
 	}
 	views.listTable = function(){
