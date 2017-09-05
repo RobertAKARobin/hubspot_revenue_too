@@ -92,7 +92,12 @@ var DealsList = (function(){
 				deal[propertyName] = (value || '');
 			}
 		}
-		deal.timeline = m.stream(deal.timeline || '');
+		if(deal.timeline){
+			deal.timeline = m.stream(deal.timeline);
+			deal['$'] = actions.calculateRevenuePerMonth(deal);
+		}else{
+			deal.timeline = m.stream('');
+		}
 		Data.dealsById[input.dealId] = deal;
 		return deal;
 	}
@@ -124,6 +129,21 @@ var DealsList = (function(){
 			}
 			return output;
 		});
+	}
+	actions.calculateRevenuePerMonth = function(deal){
+		var timeChunks = deal.timeline().match(/\$\d+\.?\d{0,2}|\%\d+|\d+\%/g);
+		var output = {};
+		if(timeChunks){
+			var total = deal.amount;
+			var startDate = new Date(parseInt(deal.closedate) || 0);
+			var startMonth = startDate.getMonth();
+			var numMonths = (timeChunks.length || 0);
+			for(var i = 0; i < numMonths; i++){
+				var newDate = new Date(startDate.setMonth(startMonth + i));
+				output[newDate.getFullYear() + '-' + newDate.getMonth()] = timeChunks[i];
+			}
+		}
+		return output;
 	}
 
 	var events = {};
@@ -162,7 +182,8 @@ var DealsList = (function(){
 			m('th', views.sortable('amount'), 'Amount'),
 			m('th', views.sortable('closedate'), 'Close date'),
 			m('th', views.sortable('timeline'), 'Timeline'),
-			m('th', '')
+			m('th', ''),
+			m('td', 'Test')
 		]);
 	}
 	views.bodyRow = function(deal, index){
@@ -184,7 +205,8 @@ var DealsList = (function(){
 				m('button', {
 					onclick: events.update.bind(deal)
 				}, 'Update')
-			])
+			]),
+			m('td', JSON.stringify(deal['$']))
 		];
 		return m('tr', output);
 	}
