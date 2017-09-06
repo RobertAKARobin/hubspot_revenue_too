@@ -246,7 +246,8 @@ var DealsList = (function(){
 			m('th', '')
 		];
 		for(var i = 0, l = Data.timeline.column_names.length; i < l; i += 1){
-			row.push(m('th', Data.timeline.column_names[i]));
+			var colName = Data.timeline.column_names[i];
+			row.push(m('th', views.sortable('$' + colName), colName));
 		}
 		return m('tr', row);
 	}
