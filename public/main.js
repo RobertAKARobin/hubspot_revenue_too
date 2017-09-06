@@ -178,6 +178,13 @@ var DealsList = (function(){
 			);
 		}
 	}
+	actions.getSumOf = function(propertyName){
+		var result = 0;
+		for(var i = 0, l = Data.deals.length; i < l; i++){
+			result += (Data.deals[i][propertyName] || 0);
+		}
+		return result;
+	}
 
 	var events = {};
 	events.loadDeals = function(event){
@@ -229,6 +236,23 @@ var DealsList = (function(){
 		}
 		return m('tr', row);
 	}
+	views.totalRow = function(){
+		var row = [
+			m('td', ''),
+			m('td', ''),
+			m('td', ''),
+			m('td', ''),
+			m('td', '$' + actions.getSumOf('amount').toFixed(2)),
+			m('td', ''),
+			m('td', ''),
+			m('td', '')
+		];
+		for(var i = 0, l = Data.timeline.column_names.length; i < l; i += 1){
+			var value = actions.getSumOf('$' + Data.timeline.column_names[i]);
+			row.push(m('td', '$' + value.toFixed(2)));
+		}
+		return m('tr', row);
+	}
 	views.bodyRow = function(deal, index){
 		var row = [
 			m('th', (Data.deals.length - index)),
@@ -255,12 +279,6 @@ var DealsList = (function(){
 			row.push(m('td', (isNaN(monthCost) ? '' : '$' + monthCost.toFixed(2))));
 		}
 		return m('tr', row);
-	}
-	views.listTable = function(){
-		return m('table', [
-			views.headerRow(),
-			Data.deals.map(views.bodyRow)
-		]);
 	}
 	views.sortable = function(propertyName){
 		return {
@@ -310,7 +328,11 @@ var DealsList = (function(){
 			return [
 				m('p', views.filter()),
 				m('p', views.triggers()),
-				views.listTable()
+				m('table', [
+					views.headerRow(),
+					views.totalRow(),
+					Data.deals.map(views.bodyRow)
+				])
 			]
 		}
 	}
