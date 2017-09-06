@@ -58,7 +58,6 @@ var Data = {
 		direction: ''
 	},
 	filter: {
-		matchQuantity: null,
 		probability_low: m.stream(help.query().probability_low || DEFAULT.probability_low),
 		probability_high: m.stream(help.query().probability_high || DEFAULT.probability_high)
 	},
@@ -78,7 +77,6 @@ var DealsList = (function(){
 		Data.loading.doContinue = true;
 		Data.deals = [];
 		Data.dealsById = {};
-		Data.filter.matchQuantity = null;
 		actions.loadNextPage();
 	}
 	actions.loadNextPage = function(){
@@ -126,7 +124,6 @@ var DealsList = (function(){
 	}
 	actions.filterAndAppendDeals = function(){
 		actions.setTimelineStartDate();
-		Data.filter.matchQuantity = null;
 		Data.deals = [];
 		Object.values(Data.dealsById).forEach(function(deal){
 			if(deal['probability_'] >= Data.filter.probability_low()
@@ -134,7 +131,6 @@ var DealsList = (function(){
 				Data.deals.push(deal);
 			}
 		});
-		Data.filter.matchQuantity = Data.deals.length;
 	}
 	actions.sortDeals = function(propertyName){
 		var nonAlphanum = /[^a-zA-Z0-9 ]/g;
@@ -237,34 +233,58 @@ var DealsList = (function(){
 	views.headerRow = function(){
 		var row = [
 			m('th', ''),
+			m('th', [
+				m('p', views.sortable('dealname'), 'Name'),
+				m('p', views.triggers()),
+				m('p', m('button', {onclick: events.filter}, 'Filter'))
+			]),
 			m('th', views.sortable('createdate'), 'Created'),
-			m('th', views.sortable('dealname'), 'Name'),
-			m('th', views.sortable('probability_'), 'Probability'),
-			m('th', views.sortable('amount'), 'Amount'),
+			m('th', [
+				m('p', views.sortable('probability_'), 'Probability'),
+				m('p', [
+					m('input', m._boundInput(Data.filter.probability_low, {
+						type: 'number',
+						min: 0,
+						max: 100
+					})),
+					m('span', ' - '),
+					m('input', m._boundInput(Data.filter.probability_high, {
+						type: 'number', 
+						min: 0,
+						max: 100
+					}))
+				])
+			]),
+			m('th', [
+				m('p', views.sortable('amount'), 'Amount'),
+				m('p', '$' + actions.getSumOf('amount').toFixed(2))
+			]),
 			m('th', views.sortable('closedate'), 'Close date'),
-			m('th', 'Timeline'),
+			m('th', [
+				m('p', 'Timeline'),
+				m('p', [
+					m('input', m._boundInput(Data.timeline.start_month, {
+						type: 'number',
+						min: 1,
+						max: 12
+					})),
+					m('span', '/'),
+					m('input', m._boundInput(Data.timeline.start_year, {
+						type: 'number',
+						min: 2000,
+						max: 2040
+					}))
+				])
+			]),
 			m('th', '')
 		];
 		for(var i = 0, l = Data.timeline.column_names.length; i < l; i += 1){
 			var colName = Data.timeline.column_names[i];
-			row.push(m('th', views.sortable('$' + colName), colName));
-		}
-		return m('tr', row);
-	}
-	views.totalRow = function(){
-		var row = [
-			m('td', ''),
-			m('td', ''),
-			m('td', ''),
-			m('td', ''),
-			m('td', '$' + actions.getSumOf('amount').toFixed(2)),
-			m('td', ''),
-			m('td', ''),
-			m('td', '')
-		];
-		for(var i = 0, l = Data.timeline.column_names.length; i < l; i += 1){
-			var value = actions.getSumOf('$' + Data.timeline.column_names[i]);
-			row.push(m('td', '$' + value.toFixed(2)));
+			var value = actions.getSumOf('$' + colName);
+			row.push(m('th', [
+				m('p', views.sortable('$' + colName), colName),
+				m('p', '$' + value.toFixed(2))
+			]));
 		}
 		return m('tr', row);
 	}
@@ -302,51 +322,15 @@ var DealsList = (function(){
 			onclick: m.withAttr('sort_property', events.sort),
 		}
 	}
-	views.filter = function(){
-		return [
-			m('p', [
-				m('span', 'Probability between '),
-				m('input', m._boundInput(Data.filter.probability_low, {
-					type: 'number',
-					min: 0,
-					max: 100
-				})),
-				m('span', ' and '),
-				m('input', m._boundInput(Data.filter.probability_high, {
-					type: 'number', 
-					min: 0,
-					max: 100
-				}))
-			]),
-			m('p', [
-				m('span', 'Timeline starting '),
-				m('input', m._boundInput(Data.timeline.start_month, {
-					type: 'number',
-					min: 1,
-					max: 12
-				})),
-				m('span', '/'),
-				m('input', m._boundInput(Data.timeline.start_year, {
-					type: 'number',
-					min: 2000,
-					max: 2040
-				}))
-			]),
-			m('button', {onclick: events.filter}, 'Filter')
-		]
-	}
 	views.triggers = function(){
 		var output = [];
-		if(Data.loading.doContinue){
-			output.push(m('button', {onclick: events.stopLoading}, 'Cancel'));
-		}else{
-			output.push(m('button', {onclick: events.loadDeals}, 'Load'));
-		}
 		if(Data.loading.total !== null){
 			output.push(m('span', Data.loading.total + ' loaded'))
 		}
-		if(Data.filter.matchQuantity !== null){
-			output.push(m('span', ', ' + Data.filter.matchQuantity + ' match'))
+		if(Data.loading.doContinue){
+			output.push(m('button', {onclick: events.stopLoading}, 'Cancel'));
+		}else{
+			output.push(m('button', {onclick: events.loadDeals}, 'Refresh'));
 		}
 		return output;
 	}
@@ -357,11 +341,8 @@ var DealsList = (function(){
 		},
 		view: function(){
 			return [
-				m('p', views.filter()),
-				m('p', views.triggers()),
 				m('table', [
 					views.headerRow(),
-					views.totalRow(),
 					Data.deals.map(views.bodyRow)
 				])
 			]
