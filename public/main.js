@@ -40,7 +40,8 @@ var DEFAULT = {
 	probability_low: 50,
 	probability_high: 100,
 	start_year: (new Date().getFullYear()),
-	start_month: (new Date().getMonth() + 1)
+	start_month: (new Date().getMonth() + 1),
+	timeline_chunks: 3
 }
 
 var Data = {
@@ -184,7 +185,7 @@ var DealsList = (function(){
 			0	// Mili
 		);
 		Data.timeline.column_names = [];
-		for(var i = 0; i < 3; i += 1){
+		for(var i = 0; i < DEFAULT.timeline_chunks; i += 1){
 			Data.timeline.column_names.push(help.date(startDate));
 			startDate.setMonth(startDate.getMonth() + 1);
 		}
