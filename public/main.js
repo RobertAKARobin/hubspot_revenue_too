@@ -11,9 +11,17 @@ m._boundInput = function(stream, attrs){
 };
 
 var help = {}
-help.date = function(input){
-	var dateObject = new Date(parseInt(input) || 0);
-	return dateObject.toISOString().split('T')[0].substring(2);
+help.date = function(date, showDays){
+	if(!(date instanceof Date)){
+		date = new Date(parseInt(date) || 0);
+	}
+	var year = date.getFullYear().toString().substring(2);
+	var month = date.getMonth() + 1;
+	if(showDays){
+		return month + '/' + date.getDate() + '/' + year;
+	}else{
+		return month + '/' + year;
+	}
 }
 help.query = function(paramsObject){
 	var query = m.parseQueryString((window.location.href.match(/\?.*?$/g) || [])[0]);
@@ -160,18 +168,15 @@ var DealsList = (function(){
 			if(/%/.test(timeChunks[i])){
 				chunkValue = (chunkValue * (deal.amount / 100));
 			}
+			deal['$' + help.date(startDate)] = chunkValue;
 			startDate.setMonth(startDate.getMonth() + 1);
-			deal['$' + startDate.getFullYear() + '-' + startDate.getMonth()] = chunkValue;
 		}
 	}
 	actions.setTimelineStartDate = function(){
-		var now = new Date();
-		var startYear = (Data.timeline.start_year() || now.getFullYear());
-		var startMonth = (Data.timeline.start_month() - 1 || now.getMonth());
 		var startDate = new Date(
-			startYear,
-			(startMonth - 1),
-			1,	// Date
+			Data.timeline.start_year(),
+			Data.timeline.start_month(),
+			1,	// Day of month
 			0,	// Hours
 			0,	// Minutes
 			0,	// Seconds
@@ -179,10 +184,8 @@ var DealsList = (function(){
 		);
 		Data.timeline.column_names = [];
 		for(var i = 0; i < 3; i += 1){
+			Data.timeline.column_names.push(help.date(startDate));
 			startDate.setMonth(startDate.getMonth() + 1);
-			Data.timeline.column_names.push(
-				startDate.getFullYear() + '-' + (startDate.getMonth() + 1)
-			);
 		}
 	}
 	actions.getSumOf = function(propertyName){
@@ -263,7 +266,7 @@ var DealsList = (function(){
 	views.bodyRow = function(deal, index){
 		var row = [
 			m('th', (Data.deals.length - index)),
-			m('td', help.date(deal.createdate)),
+			m('td', help.date(deal.createdate, 1)),
 			m('td', [
 				m('a', {
 					href: 'https://app.hubspot.com/sales/211554/deal/' + deal.dealId
@@ -271,7 +274,7 @@ var DealsList = (function(){
 			]),
 			m('td', deal['probability_']),
 			m('td', '$' + (parseFloat(deal.amount) || 0).toFixed(2)),
-			m('td', help.date(deal.closedate)),
+			m('td', help.date(deal.closedate, 1)),
 			m('td', [
 				m('input', m._boundInput(deal.timeline))
 			]),
