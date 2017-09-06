@@ -45,6 +45,11 @@ var Data = {
 		matchQuantity: null,
 		probability_low: m.stream(help.query().probability_low),
 		probability_high: m.stream(help.query().probability_high)
+	},
+	timeline: {
+		start_year: m.stream(help.query().start_year),
+		start_month: m.stream(help.query().start_month),
+		column_names: []
 	}
 };
 
@@ -96,14 +101,10 @@ var DealsList = (function(){
 				deal[propertyName] = (value || '');
 			}
 		}
-		deal.amount = (deal.amount || 0);
-		deal.probability = (deal.probability || 0);
-		if(deal.timeline){
-			deal.timeline = m.stream(deal.timeline);
-			deal['$'] = actions.calculateRevenuePerMonth(deal);
-		}else{
-			deal.timeline = m.stream('');
-		}
+		deal.amount = parseFloat(deal.amount || 0);
+		deal['probability_'] = parseInt(deal['probability_'] || 0);
+		deal.timeline = m.stream(deal.timeline || '');
+		actions.setRevenuesPerMonth(deal);
 		Data.dealsById[input.dealId] = deal;
 		return deal;
 	}
@@ -136,9 +137,8 @@ var DealsList = (function(){
 			return output;
 		});
 	}
-	actions.calculateRevenuePerMonth = function(deal){
-		var timeChunks = deal.timeline().match(/\$\d+\.?\d{0,2}|\%\d+|\d+\%/);
-		var output = {};
+	actions.setRevenuesPerMonth = function(deal){
+		var timeChunks = deal.timeline().match(/\$\d+\.?\d{0,2}|\%\d+|\d+\%/g);
 		if(timeChunks){
 			var total = deal.amount;
 			var startDate = new Date(parseInt(deal.closedate) || 0);
@@ -146,10 +146,30 @@ var DealsList = (function(){
 			var numMonths = (timeChunks.length || 0);
 			for(var i = 0; i < numMonths; i++){
 				var newDate = new Date(startDate.setMonth(startMonth + i));
-				output[newDate.getFullYear() + '-' + newDate.getMonth()] = timeChunks[i];
+				deal['$' + newDate.getFullYear() + '-' + (newDate.getMonth() + 1)] = timeChunks[i];
 			}
 		}
-		return output;
+	}
+	actions.setTimelineStartDate = function(){
+		var now = new Date();
+		var startYear = (Data.timeline.start_year() || now.getFullYear());
+		var startMonth = (Data.timeline.start_month() - 1 || now.getMonth());
+		var startDate = new Date(
+			startYear,
+			(startMonth - 1),
+			1,	// Date
+			0,	// Hours
+			0,	// Minutes
+			0,	// Seconds
+			0	// Mili
+		);
+		Data.timeline.column_names = [];
+		for(var i = 0; i < 3; i += 1){
+			startDate.setMonth(startDate.getMonth() + 1);
+			Data.timeline.column_names.push(
+				startDate.getFullYear() + '-' + (startDate.getMonth() + 1)
+			);
+		}
 	}
 
 	var events = {};
@@ -174,17 +194,20 @@ var DealsList = (function(){
 		m.request({
 			url: '/deals/' + deal.dealId,
 			method: 'PUT',
+			background: true,
 			data: {
 				deal: deal
 			}
 		}).then(function(response){
-			console.log(response)
+			console.log(response);
+			actions.setRevenuesPerMonth(deal);
+			m.redraw();
 		});
 	}
 
 	var views = {};
 	views.headerRow = function(){
-		return m('tr', [
+		var row = [
 			m('th', ''),
 			m('th', views.sortable('createdate'), 'Created'),
 			m('th', views.sortable('dealname'), 'Name'),
@@ -192,12 +215,15 @@ var DealsList = (function(){
 			m('th', views.sortable('amount'), 'Amount'),
 			m('th', views.sortable('closedate'), 'Close date'),
 			m('th', 'Timeline'),
-			m('th', ''),
-			m('td', 'Test')
-		]);
+			m('th', '')
+		];
+		for(var i = 0, l = Data.timeline.column_names.length; i < l; i += 1){
+			row.push(m('th', Data.timeline.column_names[i]));
+		}
+		return m('tr', row);
 	}
 	views.bodyRow = function(deal, index){
-		var output = [
+		var row = [
 			m('th', (Data.deals.length - index)),
 			m('td', help.date(deal.createdate)),
 			m('td', [
@@ -215,10 +241,12 @@ var DealsList = (function(){
 				m('button', {
 					onclick: events.update.bind(deal)
 				}, 'Update')
-			]),
-			m('td', JSON.stringify(deal['$']))
+			])
 		];
-		return m('tr', output);
+		for(var i = 0, l = Data.timeline.column_names.length; i < l; i += 1){
+			row.push(m('td', deal['$' + Data.timeline.column_names[i]]));
+		}
+		return m('tr', row);
 	}
 	views.listTable = function(){
 		return m('table', [
@@ -267,6 +295,9 @@ var DealsList = (function(){
 	}
 
 	return {
+		oninit: function(){
+			actions.setTimelineStartDate();
+		},
 		view: function(){
 			return [
 				m('p', views.filter()),
