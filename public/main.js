@@ -138,21 +138,23 @@ var DealsList = (function(){
 		});
 	}
 	actions.setRevenuesPerMonth = function(deal){
-		var timeChunks = deal.timeline().match(/\$\d+\.?\d{0,2}|\%\d+|\d+\%/g);
+		var num = '\\d+\\.?\\d{0,2}';
+		var matcher = new RegExp('\\$' + num + '|' + '%' + num + '|' + num + '%', 'g');
+		var timeChunks = (deal.timeline().match(matcher) || []);
+		var startDate = new Date(parseInt(deal.closedate) || 0);
+		// Clear old time chunks
 		for(var propertyName in deal){
-			if(propertyName.substring(0,1) == "$"){
+			if(propertyName.substring(0,1) == '$'){
 				deal[propertyName] = '';
 			}
 		}
-		if(timeChunks){
-			var total = deal.amount;
-			var startDate = new Date(parseInt(deal.closedate) || 0);
-			var startMonth = startDate.getMonth();
-			var numMonths = (timeChunks.length || 0);
-			for(var i = 0; i < numMonths; i++){
-				var newDate = new Date(startDate.setMonth(startMonth + i));
-				deal['$' + newDate.getFullYear() + '-' + (newDate.getMonth() + 1)] = timeChunks[i];
+		for(var i = 0, l = timeChunks.length; i < l; i++){
+			var chunkValue = parseFloat(timeChunks[i].replace(/[^\d\.]/g,''));
+			if(/%/.test(timeChunks[i])){
+				chunkValue = (chunkValue * (deal.amount / 100));
 			}
+			startDate.setMonth(startDate.getMonth() + 1);
+			deal['$' + startDate.getFullYear() + '-' + startDate.getMonth()] = chunkValue;
 		}
 	}
 	actions.setTimelineStartDate = function(){
@@ -249,7 +251,8 @@ var DealsList = (function(){
 			])
 		];
 		for(var i = 0, l = Data.timeline.column_names.length; i < l; i += 1){
-			row.push(m('td', deal['$' + Data.timeline.column_names[i]]));
+			var monthCost = deal['$' + Data.timeline.column_names[i]];
+			row.push(m('td', (isNaN(monthCost) ? '' : '$' + monthCost.toFixed(2))));
 		}
 		return m('tr', row);
 	}
