@@ -16,12 +16,14 @@ help.date = function(input){
 	return dateObject.toISOString().split('T')[0].substring(2);
 }
 help.query = function(paramsObject){
-	var query = m.parseQueryString(window.location.search);
+	var query = m.parseQueryString(window.location.href.match(/\?.*?$/g)[0]);
+	var newurl = window.location.origin + window.location.pathname;
 	if(paramsObject){
 		for(var key in paramsObject){
 			query[key] = paramsObject[key];
 		}
-		window.location.search = m.buildQueryString(query);
+		newurl += '?' + m.buildQueryString(query);
+		window.history.pushState({path: newurl}, '', newurl);
 	}
 	return query;
 }
@@ -39,8 +41,8 @@ var Data = {
 	sortDirection: '',
 	filter: {
 		matchQuantity: null,
-		probability_low: m.stream(help.query().probability_low || 50),
-		probability_high: m.stream(help.query().probability_high || 100)
+		probability_low: m.stream(help.query().probability_low),
+		probability_high: m.stream(help.query().probability_high)
 	}
 };
 
@@ -92,6 +94,8 @@ var DealsList = (function(){
 				deal[propertyName] = (value || '');
 			}
 		}
+		deal.amount = (deal.amount || 0);
+		deal.probability = (deal.probability || 0);
 		if(deal.timeline){
 			deal.timeline = m.stream(deal.timeline);
 			deal['$'] = actions.calculateRevenuePerMonth(deal);
@@ -131,7 +135,7 @@ var DealsList = (function(){
 		});
 	}
 	actions.calculateRevenuePerMonth = function(deal){
-		var timeChunks = deal.timeline().match(/\$\d+\.?\d{0,2}|\%\d+|\d+\%/g);
+		var timeChunks = deal.timeline().match(/\$\d+\.?\d{0,2}|\%\d+|\d+\%/);
 		var output = {};
 		if(timeChunks){
 			var total = deal.amount;
@@ -157,6 +161,10 @@ var DealsList = (function(){
 		actions.sortDeals(propertyName);
 	}
 	events.filter = function(event){
+		help.query({
+			probability_low: Data.filter.probability_low,
+			probability_high: Data.filter.probability_high
+		});
 		actions.filterAndAppendDeals();
 	}
 	events.update = function(event){
