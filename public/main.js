@@ -28,6 +28,13 @@ help.query = function(paramsObject){
 	return query;
 }
 
+var DEFAULT = {
+	probability_low: 50,
+	probability_high: 100,
+	start_year: (new Date().getFullYear()),
+	start_month: (new Date().getMonth())
+}
+
 var Data = {
 	loading: {
 		total: null,
@@ -43,12 +50,12 @@ var Data = {
 	},
 	filter: {
 		matchQuantity: null,
-		probability_low: m.stream(help.query().probability_low),
-		probability_high: m.stream(help.query().probability_high)
+		probability_low: m.stream(help.query().probability_low || DEFAULT.probability_low),
+		probability_high: m.stream(help.query().probability_high || DEFAULT.probability_high)
 	},
 	timeline: {
-		start_year: m.stream(help.query().start_year),
-		start_month: m.stream(help.query().start_month),
+		start_year: m.stream(help.query().start_year || DEFAULT.start_year),
+		start_month: m.stream(help.query().start_month || DEFAULT.start_month),
 		column_names: []
 	}
 };
