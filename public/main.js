@@ -40,7 +40,7 @@ var DEFAULT = {
 	probability_low: 50,
 	probability_high: 100,
 	start_year: (new Date().getFullYear()),
-	start_month: (new Date().getMonth())
+	start_month: (new Date().getMonth() + 1)
 }
 
 var Data = {
@@ -176,7 +176,7 @@ var DealsList = (function(){
 	actions.setTimelineStartDate = function(){
 		var startDate = new Date(
 			Data.timeline.start_year(),
-			Data.timeline.start_month(),
+			Data.timeline.start_month() - 1,
 			1,	// Day of month
 			0,	// Hours
 			0,	// Minutes
@@ -320,8 +320,8 @@ var DealsList = (function(){
 				m('span', 'Timeline starting '),
 				m('input', m._boundInput(Data.timeline.start_month, {
 					type: 'number',
-					min: 0,
-					max: 11
+					min: 1,
+					max: 12
 				})),
 				m('span', '/'),
 				m('input', m._boundInput(Data.timeline.start_year, {
