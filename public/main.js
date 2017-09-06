@@ -211,11 +211,15 @@ var DealsList = (function(){
 		actions.filterAndAppendDeals();
 	}
 	events.updateTimeChunks = function(event){
-		help.query({
-			start_month: Data.timeline.start_month,
-			start_year: Data.timeline.start_year
-		});
-		actions.setTimelineStartDate();
+		if(event.keyCode == 13){
+			help.query({
+				start_month: Data.timeline.start_month,
+				start_year: Data.timeline.start_year
+			});
+			actions.setTimelineStartDate();
+		}else{
+			event.redraw = false;
+		}
 	}
 	events.update = function(event){
 		var deal = this;
@@ -241,11 +245,28 @@ var DealsList = (function(){
 			m('th', views.sortable('probability_'), 'Probability'),
 			m('th', views.sortable('amount'), 'Amount'),
 			m('th', views.sortable('closedate'), 'Close date'),
-			m('th', 'Timeline'),
+			m('th', ''),
+			m('th', ''),
+			m('th.date', [
+				m('span', views.sortable('$' + Data.timeline.column_names[0]), ''),
+				m('input', m._boundInput(Data.timeline.start_month, {
+					type: 'number',
+					min: 1,
+					max: 12,
+					onkeyup: events.updateTimeChunks
+				})),
+				m('span', '/'),
+				m('input', m._boundInput(Data.timeline.start_year, {
+					type: 'number',
+					min: 2000,
+					max: 2040,
+					onkeyup: events.updateTimeChunks
+				}))
+			])
 		];
-		for(var i = 0, l = Data.timeline.column_names.length; i < l; i += 1){
+		for(var i = 1, l = Data.timeline.column_names.length; i < l; i += 1){
 			var colName = Data.timeline.column_names[i];
-			row.push(m('th', views.sortable('$' + colName), colName));
+			row.push(m('th.date', views.sortable('$' + colName), colName));
 		}
 		return m('tr.colheaders', row);
 	}
@@ -274,20 +295,8 @@ var DealsList = (function(){
 			]),
 			m('th.number', '$' + actions.getSumOf('amount').toFixed(2)),
 			m('th', ''),
-			m('th', [
-				m('input', m._boundInput(Data.timeline.start_month, {
-					type: 'number',
-					min: 1,
-					max: 12
-				})),
-				m('span', '/'),
-				m('input', m._boundInput(Data.timeline.start_year, {
-					type: 'number',
-					min: 2000,
-					max: 2040
-				})),
-				m('button', {onclick: events.updateTimeChunks}, 'Update')
-			])
+			m('th', ''),
+			m('th', '')
 		];
 		for(var i = 0, l = Data.timeline.column_names.length; i < l; i += 1){
 			var colName = Data.timeline.column_names[i];
@@ -309,7 +318,9 @@ var DealsList = (function(){
 			m('td', [
 				m('input', m._boundInput(deal.timeline, {
 					spellcheck: 'false'
-				})),
+				}))
+			]),
+			m('td', [
 				m('button', {
 					onclick: events.update.bind(deal)
 				}, 'Update')

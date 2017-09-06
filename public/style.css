@@ -51,6 +51,17 @@ th, td{
 	font-weight:bold;
 	color:#fff;
 }
+.colheaders input{
+	background-color:transparent;
+	padding:0;
+	border:0;
+	border-bottom:1px dotted #fff;
+	border-radius:0;
+	color:#fff;
+}
+.colheaders input:focus{
+	background-color:#999;
+}
 .subheaders th{
 	background-color:#fff;
 	border:0;
@@ -81,6 +92,7 @@ th, td{
 input, button{
 	display:inline-block;
 	padding:2px 5px;
+	border-radius:5px;
 	box-sizing:border-box;
 }
 input{
@@ -97,7 +109,6 @@ button{
 	cursor:pointer;
 	color:#14264a;
 	margin:0 3px;
-	border-radius:5px;
 	background-color:#ccc;
 	border-bottom:1px solid #aaa;
 }
