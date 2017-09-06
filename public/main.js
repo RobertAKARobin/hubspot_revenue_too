@@ -16,7 +16,7 @@ help.date = function(input){
 	return dateObject.toISOString().split('T')[0].substring(2);
 }
 help.query = function(paramsObject){
-	var query = m.parseQueryString(window.location.href.match(/\?.*?$/g)[0]);
+	var query = m.parseQueryString((window.location.href.match(/\?.*?$/g) || [])[0]);
 	var newurl = window.location.origin + window.location.pathname;
 	if(paramsObject){
 		for(var key in paramsObject){
