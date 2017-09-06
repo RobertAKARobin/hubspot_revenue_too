@@ -139,6 +139,11 @@ var DealsList = (function(){
 	}
 	actions.setRevenuesPerMonth = function(deal){
 		var timeChunks = deal.timeline().match(/\$\d+\.?\d{0,2}|\%\d+|\d+\%/g);
+		for(var propertyName in deal){
+			if(propertyName.substring(0,1) == "$"){
+				deal[propertyName] = '';
+			}
+		}
 		if(timeChunks){
 			var total = deal.amount;
 			var startDate = new Date(parseInt(deal.closedate) || 0);
