@@ -37,8 +37,10 @@ var Data = {
 	deals: [],
 	dealsById: {},
 	serverResponse: '',
-	sortProperty: '',
-	sortDirection: '',
+	sort: {
+		property: '',
+		direction: ''
+	},
 	filter: {
 		matchQuantity: null,
 		probability_low: m.stream(help.query().probability_low),
@@ -118,8 +120,8 @@ var DealsList = (function(){
 	}
 	actions.sortDeals = function(propertyName){
 		var nonAlphanum = /[^a-zA-Z0-9 ]/g;
-		Data.sortProperty = propertyName;
-		Data.sortDirection = (Data.sortDirection == 'asc' ? 'desc' : 'asc');
+		Data.sort.property = propertyName;
+		Data.sort.direction = (Data.sort.direction == 'asc' ? 'desc' : 'asc');
 		Data.deals.sort(function(a, b){
 			var output = 0;
 			var valA = (a[propertyName] || '').toString().replace(nonAlphanum, '').toLowerCase();
@@ -127,9 +129,9 @@ var DealsList = (function(){
 			valA = (isNaN(valA) ? valA : parseFloat(valA) || '');
 			valB = (isNaN(valB) ? valB : parseFloat(valB) || '');
 			if(valA > valB){
-				output = (Data.sortDirection == 'asc' ? 1 : -1);
+				output = (Data.sort.direction == 'asc' ? 1 : -1);
 			}else if(valA < valB){
-				output = (Data.sortDirection == 'asc' ? -1 : 1);
+				output = (Data.sort.direction == 'asc' ? -1 : 1);
 			}
 			return output;
 		});
@@ -189,7 +191,7 @@ var DealsList = (function(){
 			m('th', views.sortable('probability_'), 'Probability'),
 			m('th', views.sortable('amount'), 'Amount'),
 			m('th', views.sortable('closedate'), 'Close date'),
-			m('th', views.sortable('timeline'), 'Timeline'),
+			m('th', 'Timeline'),
 			m('th', ''),
 			m('td', 'Test')
 		]);
@@ -227,7 +229,7 @@ var DealsList = (function(){
 	views.sortable = function(propertyName){
 		return {
 			sort_property: propertyName,
-			sorting: (propertyName == Data.sortProperty ? Data.sortDirection : ''),
+			sorting: (propertyName == Data.sort.property ? Data.sort.direction : ''),
 			onclick: m.withAttr('sort_property', events.sort),
 		}
 	}
