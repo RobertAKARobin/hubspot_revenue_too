@@ -123,7 +123,6 @@ var DealsList = (function(){
 		return deal;
 	}
 	actions.filterAndAppendDeals = function(){
-		actions.setTimelineStartDate();
 		Data.deals = [];
 		Object.values(Data.dealsById).forEach(function(deal){
 			if(deal['probability_'] >= Data.filter.probability_low()
@@ -207,11 +206,16 @@ var DealsList = (function(){
 	events.filter = function(event){
 		help.query({
 			probability_low: Data.filter.probability_low,
-			probability_high: Data.filter.probability_high,
+			probability_high: Data.filter.probability_high
+		});
+		actions.filterAndAppendDeals();
+	}
+	events.updateTimeChunks = function(event){
+		help.query({
 			start_month: Data.timeline.start_month,
 			start_year: Data.timeline.start_year
 		});
-		actions.filterAndAppendDeals();
+		actions.setTimelineStartDate();
 	}
 	events.update = function(event){
 		var deal = this;
@@ -233,77 +237,79 @@ var DealsList = (function(){
 	views.headerRow = function(){
 		var row = [
 			m('th', ''),
-			m('th', [
-				m('p', views.sortable('dealname'), 'Name'),
-				m('p', views.triggers()),
-				m('p', m('button', {onclick: events.filter}, 'Filter'))
-			]),
-			m('th', views.sortable('createdate'), 'Created'),
-			m('th', [
-				m('p', views.sortable('probability_'), 'Probability'),
-				m('p', [
-					m('input', m._boundInput(Data.filter.probability_low, {
-						type: 'number',
-						min: 0,
-						max: 100
-					})),
-					m('span', ' - '),
-					m('input', m._boundInput(Data.filter.probability_high, {
-						type: 'number', 
-						min: 0,
-						max: 100
-					}))
-				])
-			]),
-			m('th', [
-				m('p', views.sortable('amount'), 'Amount'),
-				m('p', '$' + actions.getSumOf('amount').toFixed(2))
-			]),
+			m('th', views.sortable('dealname'), 'Name'),
+			m('th', views.sortable('probability_'), 'Probability'),
+			m('th', views.sortable('amount'), 'Amount'),
 			m('th', views.sortable('closedate'), 'Close date'),
-			m('th', [
-				m('p', 'Timeline'),
-				m('p', [
-					m('input', m._boundInput(Data.timeline.start_month, {
-						type: 'number',
-						min: 1,
-						max: 12
-					})),
-					m('span', '/'),
-					m('input', m._boundInput(Data.timeline.start_year, {
-						type: 'number',
-						min: 2000,
-						max: 2040
-					}))
-				])
-			]),
-			m('th', '')
+			m('th', 'Timeline'),
 		];
 		for(var i = 0, l = Data.timeline.column_names.length; i < l; i += 1){
 			var colName = Data.timeline.column_names[i];
-			var value = actions.getSumOf('$' + colName);
-			row.push(m('th', [
-				m('p', views.sortable('$' + colName), colName),
-				m('p', '$' + value.toFixed(2))
-			]));
+			row.push(m('th', views.sortable('$' + colName), colName));
 		}
-		return m('tr', row);
+		return m('tr.colheaders', row);
+	}
+	views.subheaderRow = function(){
+		var row = [
+			m('th', ''),
+			m('th', [
+				m('span', (Data.loading.doContinue ? 'Loading...' : Data.loading.total + ' loaded, ' + Data.deals.length + ' match')),
+				m('button', {
+					onclick: (Data.loading.continue ? events.stopLoading : events.loadDeals)
+				}, (Data.loading.continue ? 'Cancel' : 'Refresh'))
+			]),
+			m('th', [
+				m('input', m._boundInput(Data.filter.probability_low, {
+					type: 'number',
+					min: 0,
+					max: 100
+				})),
+				m('span', ' - '),
+				m('input', m._boundInput(Data.filter.probability_high, {
+					type: 'number', 
+					min: 0,
+					max: 100
+				})),
+				m('button', {onclick: events.filter}, 'Filter')
+			]),
+			m('th.number', '$' + actions.getSumOf('amount').toFixed(2)),
+			m('th', ''),
+			m('th', [
+				m('input', m._boundInput(Data.timeline.start_month, {
+					type: 'number',
+					min: 1,
+					max: 12
+				})),
+				m('span', '/'),
+				m('input', m._boundInput(Data.timeline.start_year, {
+					type: 'number',
+					min: 2000,
+					max: 2040
+				})),
+				m('button', {onclick: events.updateTimeChunks}, 'Update')
+			])
+		];
+		for(var i = 0, l = Data.timeline.column_names.length; i < l; i += 1){
+			var colName = Data.timeline.column_names[i];
+			row.push(m('th.number', '$' + actions.getSumOf('$' + colName).toFixed(2)));
+		}
+		return m('tr.subheaders', row);
 	}
 	views.bodyRow = function(deal, index){
 		var row = [
 			m('th', (Data.deals.length - index)),
-			m('td', help.date(deal.createdate, 1)),
 			m('td', [
 				m('a', {
 					href: 'https://app.hubspot.com/sales/211554/deal/' + deal.dealId
 				}, deal.dealname),
 			]),
-			m('td', deal['probability_']),
-			m('td', '$' + (parseFloat(deal.amount) || 0).toFixed(2)),
-			m('td', help.date(deal.closedate, 1)),
+			m('td.number', deal['probability_']),
+			m('td.number', '$' + (parseFloat(deal.amount) || 0).toFixed(2)),
+			m('td.date', help.date(deal.closedate, 1)),
 			m('td', [
-				m('input', m._boundInput(deal.timeline))
-			]),
-			m('td', [
+				m('input', m._boundInput(deal.timeline, {
+					spellcheck: 'false'
+				})),
 				m('button', {
 					onclick: events.update.bind(deal)
 				}, 'Update')
@@ -311,7 +317,7 @@ var DealsList = (function(){
 		];
 		for(var i = 0, l = Data.timeline.column_names.length; i < l; i += 1){
 			var monthCost = deal['$' + Data.timeline.column_names[i]];
-			row.push(m('td', (isNaN(monthCost) ? '' : '$' + monthCost.toFixed(2))));
+			row.push(m('td.number', (isNaN(monthCost) ? '' : '$' + monthCost.toFixed(2))));
 		}
 		return m('tr', row);
 	}
@@ -322,27 +328,17 @@ var DealsList = (function(){
 			onclick: m.withAttr('sort_property', events.sort),
 		}
 	}
-	views.triggers = function(){
-		var output = [];
-		if(Data.loading.total !== null){
-			output.push(m('span', Data.loading.total + ' loaded'))
-		}
-		if(Data.loading.doContinue){
-			output.push(m('button', {onclick: events.stopLoading}, 'Cancel'));
-		}else{
-			output.push(m('button', {onclick: events.loadDeals}, 'Refresh'));
-		}
-		return output;
-	}
 
 	return {
 		oninit: function(){
 			actions.setTimelineStartDate();
+			actions.loadDeals();
 		},
 		view: function(){
 			return [
 				m('table', [
 					views.headerRow(),
+					views.subheaderRow(),
 					Data.deals.map(views.bodyRow)
 				])
 			]
