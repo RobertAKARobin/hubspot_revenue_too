@@ -124,6 +124,7 @@ var DealsList = (function(){
 		return deal;
 	}
 	actions.filterAndAppendDeals = function(){
+		actions.setTimelineStartDate();
 		Data.filter.matchQuantity = null;
 		Data.deals = [];
 		Object.values(Data.dealsById).forEach(function(deal){
@@ -209,7 +210,9 @@ var DealsList = (function(){
 	events.filter = function(event){
 		help.query({
 			probability_low: Data.filter.probability_low,
-			probability_high: Data.filter.probability_high
+			probability_high: Data.filter.probability_high,
+			start_month: Data.timeline.start_month,
+			start_year: Data.timeline.start_year
 		});
 		actions.filterAndAppendDeals();
 	}
@@ -299,18 +302,34 @@ var DealsList = (function(){
 	}
 	views.filter = function(){
 		return [
-			m('span', 'Probability between '),
-			m('input', m._boundInput(Data.filter.probability_low, {
-				type: 'number',
-				min: 0,
-				max: 100
-			})),
-			m('span', ' and '),
-			m('input', m._boundInput(Data.filter.probability_high, {
-				type: 'number', 
-				min: 0,
-				max: 100
-			})),
+			m('p', [
+				m('span', 'Probability between '),
+				m('input', m._boundInput(Data.filter.probability_low, {
+					type: 'number',
+					min: 0,
+					max: 100
+				})),
+				m('span', ' and '),
+				m('input', m._boundInput(Data.filter.probability_high, {
+					type: 'number', 
+					min: 0,
+					max: 100
+				}))
+			]),
+			m('p', [
+				m('span', 'Timeline starting '),
+				m('input', m._boundInput(Data.timeline.start_month, {
+					type: 'number',
+					min: 0,
+					max: 11
+				})),
+				m('span', '/'),
+				m('input', m._boundInput(Data.timeline.start_year, {
+					type: 'number',
+					min: 2000,
+					max: 2040
+				}))
+			]),
 			m('button', {onclick: events.filter}, 'Filter')
 		]
 	}
