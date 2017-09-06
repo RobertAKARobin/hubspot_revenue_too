@@ -71,6 +71,9 @@ th, td{
 [type="number"]{
 	text-align:right;
 }
+.number input{
+	text-align:right;
+}
 [sorting]{
 	cursor:pointer;
 	color:#fff;

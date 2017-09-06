@@ -115,8 +115,8 @@ var DealsList = (function(){
 				deal[propertyName] = (value || '');
 			}
 		}
-		deal.amount = parseFloat(deal.amount || 0);
-		deal['probability_'] = parseInt(deal['probability_'] || 0);
+		deal.amount = m.stream(parseFloat(deal.amount || 0));
+		deal['probability_'] = m.stream(parseInt(deal['probability_'] || 0));
 		deal.timeline = m.stream(deal.timeline || '');
 		actions.setRevenuesPerMonth(deal);
 		Data.dealsById[input.dealId] = deal;
@@ -188,7 +188,7 @@ var DealsList = (function(){
 	actions.getSumOf = function(propertyName){
 		var result = 0;
 		for(var i = 0, l = Data.deals.length; i < l; i++){
-			result += (Data.deals[i][propertyName] || 0);
+			result += (parseFloat(Data.deals[i][propertyName]) || 0);
 		}
 		return result;
 	}
@@ -279,7 +279,7 @@ var DealsList = (function(){
 					onclick: (Data.loading.continue ? events.stopLoading : events.loadDeals)
 				}, (Data.loading.continue ? 'Cancel' : 'Refresh'))
 			]),
-			m('th', [
+			m('th.number', [
 				m('input', m._boundInput(Data.filter.probability_low, {
 					type: 'number',
 					min: 0,
@@ -312,8 +312,13 @@ var DealsList = (function(){
 					href: 'https://app.hubspot.com/sales/211554/deal/' + deal.dealId
 				}, deal.dealname),
 			]),
-			m('td.number', deal['probability_']),
-			m('td.number', '$' + (parseFloat(deal.amount) || 0).toFixed(2)),
+			m('td.number', [
+				m('input', m._boundInput(deal['probability_']))
+			]),
+			m('td.number', [
+				m('span', '$'),
+				m('input', m._boundInput(deal.amount))
+			]),
 			m('td.date', help.date(deal.closedate, 1)),
 			m('td', [
 				m('input', m._boundInput(deal.timeline, {
