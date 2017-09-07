@@ -55,7 +55,7 @@ var DEFAULT = {
 
 var Data = {
 	loading: {
-		total: null,
+		total: 0,
 		offset: 0,
 		doContinue: false
 	},
@@ -81,7 +81,7 @@ var DealsList = (function(){
 
 	var actions = {};
 	actions.loadDeals = function(){
-		Data.loading.total = null;
+		Data.loading.total = 0;
 		Data.loading.offset = 0;
 		Data.loading.doContinue = true;
 		Data.deals = [];
@@ -382,16 +382,15 @@ var DealsList = (function(){
 	return {
 		oninit: function(){
 			actions.setTimelineStartDate();
-			actions.loadDeals();
 		},
 		view: function(){
 			return [
 				m('h1', 'Deals'),
 				m('p', [
 					m('button', {
-						onclick: (Data.loading.continue ? events.stopLoading : events.loadDeals)
-					}, (Data.loading.continue ? 'Cancel' : 'Refresh')),
-					m('span', (Data.loading.doContinue ? 'Loading...' : Data.loading.total + ' loaded'))
+						onclick: (Data.loading.doContinue ? events.stopLoading : events.loadDeals)
+					}, (Data.loading.doContinue ? 'Cancel' : 'Refresh')),
+					m('span', (Data.loading.doContinue ? 'Loading ' + (Data.loading.total || '') + '...' : Data.loading.total + ' loaded'))
 				]),
 				m('p', [
 					m('label', [

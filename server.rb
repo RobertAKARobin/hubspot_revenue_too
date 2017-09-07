@@ -27,9 +27,9 @@ get "/deals" do
 	url = "https://api.hubapi.com/deals/v1/deal/paged?#{query}"
 
 	begin
-		# response = HTTParty.get(url)
-		response = {}
-		response[:deals] = JSON.parse(File.read("sample.json"))
+		response = HTTParty.get(url)
+		# response = {}
+		# response[:deals] = JSON.parse(File.read("sample.json"))
 		response[:success] = true
 		return json(response.to_h)
 	rescue Exception => error
