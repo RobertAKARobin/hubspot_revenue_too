@@ -15,7 +15,7 @@ help.date = function(date, showDays){
 	if(!(date instanceof Date)){
 		date = new Date(parseInt(date) || 0);
 	}
-	var year = date.getFullYear().toString().substring(2);
+	var year = date.getFullYear();
 	var month = date.getMonth() + 1;
 	if(showDays){
 		return month + '/' + date.getDate() + '/' + year;
@@ -41,7 +41,15 @@ var DEFAULT = {
 	probability_high: 100,
 	start_year: (new Date().getFullYear()),
 	start_month: (new Date().getMonth() + 1),
-	timeline_chunks: 3
+	timeline_chunks: 3,
+	properties: {
+		createdate: 'integer',
+		dealname: 'string',
+		'probability_': 'integer',
+		amount: 'float', 
+		closedate: 'integer',
+		timeline: 'string'
+	}
 }
 
 var Data = {
@@ -85,7 +93,7 @@ var DealsList = (function(){
 			data: {
 				limit: 250,
 				offset: (Data.loading.offset || 0),
-				properties: ['createdate', 'dealname', 'probability_', 'amount', 'closedate', 'timeline'].join(',')
+				properties: Object.keys(DEFAULT.properties).join(',')
 			}
 		}).then(actions.parseResponse);
 	}
@@ -107,17 +115,30 @@ var DealsList = (function(){
 		var deal = {
 			dealId: input.dealId
 		};
-		for(var propertyName in input.properties){
+		for(var propertyName in DEFAULT.properties){
 			var value = (input.properties[propertyName] || {}).value;
-			if(value === 0){
-				deal[propertyName] = 0;
-			}else{
-				deal[propertyName] = (value || '');
+			switch(DEFAULT.properties[propertyName]){
+				case 'string':
+					deal[propertyName] = (value || '');
+					break;
+				case 'float':
+					deal[propertyName] = (parseFloat(value) || 0);
+					break;
+				default:
+					deal[propertyName] = (parseInt(value) || 0);
 			}
 		}
-		deal.amount = m.stream(parseFloat(deal.amount || 0));
-		deal['probability_'] = m.stream(parseInt(deal['probability_'] || 0));
-		deal.timeline = m.stream(deal.timeline || '');
+		var closedate = new Date(deal.closedate);
+		deal.stream = {
+			amount: m.stream(parseFloat(deal.amount || 0)),
+			'probability_': m.stream(parseInt(deal['probability_'] || 0)),
+			timeline: m.stream(deal.timeline || ''),
+			closedate_chunks: {
+				year: m.stream(closedate.getFullYear(), 1),
+				month: m.stream(closedate.getMonth() + 1),
+				date: m.stream(closedate.getDate())
+			}
+		}
 		actions.setRevenuesPerMonth(deal);
 		Data.dealsById[input.dealId] = deal;
 		return deal;
@@ -137,9 +158,8 @@ var DealsList = (function(){
 		Data.sort.direction = (Data.sort.direction == 'asc' ? 'desc' : 'asc');
 		Data.deals.sort(function(a, b){
 			var output = 0;
-			// stream.toString() sometimes returns a number. Wat.
-			var valA = (a[propertyName] || '').toString().toString().replace(nonAlphanum, '').toLowerCase();
-			var valB = (b[propertyName] || '').toString().toString().replace(nonAlphanum, '').toLowerCase();
+			var valA = (a[propertyName] || '').toString().replace(nonAlphanum, '').toLowerCase();
+			var valB = (b[propertyName] || '').toString().replace(nonAlphanum, '').toLowerCase();
 			valA = (isNaN(valA) ? valA : parseFloat(valA) || '');
 			valB = (isNaN(valB) ? valB : parseFloat(valB) || '');
 			if(valA > valB){
@@ -153,7 +173,7 @@ var DealsList = (function(){
 	actions.setRevenuesPerMonth = function(deal){
 		var num = '\\d+\\.?\\d{0,2}';
 		var matcher = new RegExp('\\$' + num + '|' + '%' + num + '|' + num + '%', 'g');
-		var timeChunks = (deal.timeline().match(matcher) || []);
+		var timeChunks = (deal.timeline.match(matcher) || []);
 		var startDate = new Date(parseInt(deal.closedate) || 0);
 		// Clear old time chunks
 		for(var propertyName in deal){
@@ -224,6 +244,12 @@ var DealsList = (function(){
 	}
 	events.update = function(event){
 		var deal = this;
+		console.log(deal.closedate)
+		deal.stream.closedate = new Date(
+			deal.stream.closedate_chunks.year,
+			deal.stream.closedate_chunks.month - 1,
+			deal.stream.closedate_chunks.date
+		).getTime();
 		m.request({
 			url: '/deals/' + deal.dealId,
 			method: 'PUT',
@@ -232,8 +258,12 @@ var DealsList = (function(){
 				deal: deal
 			}
 		}).then(function(response){
-			console.log(response);
+			var responseDeal = response.data.deal;
+			for(var propertyName in DEFAULT.properties){
+				deal[propertyName] = (responseDeal.stream[propertyName] || responseDeal[propertyName]);
+			}
 			actions.setRevenuesPerMonth(deal);
+			console.log(deal.closedate)
 			m.redraw();
 		});
 	}
@@ -314,15 +344,31 @@ var DealsList = (function(){
 				}, deal.dealname),
 			]),
 			m('td.number', [
-				m('input', m._boundInput(deal['probability_']))
+				m('input', m._boundInput(deal.stream['probability_'], {
+					type: 'number'
+				}))
 			]),
 			m('td.number', [
 				m('span', '$'),
-				m('input', m._boundInput(deal.amount))
+				m('input', m._boundInput(deal.stream.amount, {
+					type: 'number'
+				}))
 			]),
-			m('td.date', help.date(deal.closedate, 1)),
+			m('td.date', [
+				m('input', m._boundInput(deal.stream.closedate_chunks.month, {
+					type: 'number'
+				})),
+				'/',
+				m('input', m._boundInput(deal.stream.closedate_chunks.date, {
+					type: 'number'
+				})),
+				'/',
+				m('input', m._boundInput(deal.stream.closedate_chunks.year, {
+					type: 'number'
+				}))
+			]),
 			m('td', [
-				m('input', m._boundInput(deal.timeline, {
+				m('input', m._boundInput(deal.stream.timeline, {
 					spellcheck: 'false'
 				}))
 			]),
