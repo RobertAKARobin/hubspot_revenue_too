@@ -5,7 +5,6 @@ m._boundInput = function(stream, attrs){
 	attrs.value = stream();
 	attrs.oninput = function(event){
 		event.redraw = false;
-		event.target.classList.add('dirty');
 		m.withAttr('value', stream).call({}, event);
 	};
 	return attrs;
@@ -234,19 +233,14 @@ var DealsList = (function(){
 		actions.filterAndAppendDeals();
 	}
 	events.updateTimeChunks = function(event){
-		if(event.keyCode == 13){
-			help.query({
-				start_month: Data.timeline.start_month,
-				start_year: Data.timeline.start_year
-			});
-			actions.setTimelineStartDate();
-		}else{
-			event.redraw = false;
-		}
+		help.query({
+			start_month: Data.timeline.start_month,
+			start_year: Data.timeline.start_year
+		});
+		actions.setTimelineStartDate();
 	}
 	events.update = function(event){
 		var deal = this;
-		console.log(deal.closedate)
 		deal.stream.closedate = new Date(
 			deal.stream.closedate_chunks.year,
 			deal.stream.closedate_chunks.month - 1,
@@ -265,7 +259,6 @@ var DealsList = (function(){
 				deal[propertyName] = (responseDeal.stream[propertyName] || responseDeal[propertyName]);
 			}
 			actions.setRevenuesPerMonth(deal);
-			console.log(deal.closedate)
 			m.redraw();
 		});
 	}
@@ -282,17 +275,17 @@ var DealsList = (function(){
 				m('input', m._boundInput(Data.timeline.start_month, {
 					type: 'number',
 					min: 1,
-					max: 12,
-					onkeyup: events.updateTimeChunks
+					max: 12
 				})),
 				m('span', '/'),
 				m('input', m._boundInput(Data.timeline.start_year, {
 					type: 'number',
 					min: 2000,
-					max: 2040,
-					onkeyup: events.updateTimeChunks
+					max: 2040
 				})),
-				m('button', 'Go')
+				m('button', {
+					onclick: events.updateTimeChunks
+				}, 'Go')
 			])
 		];
 		for(var i = 1, l = Data.timeline.column_names.length; i < l; i += 1){
@@ -359,16 +352,18 @@ var DealsList = (function(){
 						type: 'number'
 					}))
 				])
+			]),
+			m('td', {
+				colspan: DEFAULT.timeline_chunks
+			}, [
+				m('label', [
+					m('input', m._boundInput(deal.stream.timeline))
+				])
 			])
 		];
 		for(var i = 0, l = Data.timeline.column_names.length; i < l; i += 1){
-			var monthCost = deal['$' + Data.timeline.column_names[i]];
+			var monthCost = (deal['$' + Data.timeline.column_names[i]] || 0);
 			nameRow.push(m('td.number', (isNaN(monthCost) ? '' : '$' + monthCost.toFixed(2))));
-			bodyRow.push(m('td', [
-				m('label', [
-					m('input')
-				])
-			]));
 		}
 		return [
 			m('tr.body', nameRow),
