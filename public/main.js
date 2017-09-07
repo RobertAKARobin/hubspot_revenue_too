@@ -39,7 +39,7 @@ help.query = function(paramsObject){
 
 var DEFAULT = {
 	probability_low: 50,
-	probability_high: 100,
+	probability_high: 75,
 	start_year: (new Date().getFullYear()),
 	start_month: (new Date().getMonth() + 1),
 	timeline_chunks: 3,
@@ -393,21 +393,19 @@ var DealsList = (function(){
 					m('span', (Data.loading.doContinue ? 'Loading ' + (Data.loading.total || '') + '...' : Data.loading.total + ' loaded'))
 				]),
 				m('p', [
-					m('label', [
-						m('button', {onclick: events.filter}, 'Filter'),
-						m('span', 'Probability between '),
-						m('input', m._boundInput(Data.filter.probability_low, {
-							type: 'number',
-							min: 0,
-							max: 100
-						})),
-						m('span', ' and '),
-						m('input', m._boundInput(Data.filter.probability_high, {
-							type: 'number', 
-							min: 0,
-							max: 100
-						}))
-					])
+					m('button', {onclick: events.filter}, 'Filter'),
+					m('span', 'Probability between '),
+					m('input', m._boundInput(Data.filter.probability_low, {
+						type: 'number',
+						min: 0,
+						max: 100
+					})),
+					m('span', ' and '),
+					m('input', m._boundInput(Data.filter.probability_high, {
+						type: 'number', 
+						min: 0,
+						max: 100
+					}))
 				]),
 				m('table', [
 					views.headerRow(),
