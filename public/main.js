@@ -296,7 +296,7 @@ var DealsList = (function(){
 	}
 	views.subheaderRow = function(){
 		var row = [
-			m('th'),
+			m('th', 'TOTALS'),
 			m('th.number'),
 			m('th.number', '$' + actions.getSumOf('amount').toFixed(2)),
 			m('th')
@@ -327,7 +327,8 @@ var DealsList = (function(){
 				m('label.number', [
 					m('input', m._boundInput(deal.stream['probability_'], {
 						type: 'number'
-					}))
+					})),
+					m('span', '%')
 				])
 			]),
 			m('td', [

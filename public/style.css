@@ -47,6 +47,8 @@ a:hover{
 	background-color:#14264a;
 	font-weight:bold;
 	color:#fff;
+	text-align:center;
+	border-right:1px solid #777;
 }
 .colheaders input{
 	background-color:transparent;
@@ -85,7 +87,8 @@ a:hover{
 }
 .subheaders > *{
 	border:0;
-	background-color:#ddd;
+	background-color:#ccc;
+	border-right:1px solid #aaa;
 }
 table{
 	width:100%;
