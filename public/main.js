@@ -358,7 +358,9 @@ var DealsList = (function(){
 				colspan: DEFAULT.timeline_chunks
 			}, [
 				m('label', [
-					m('input', m._boundInput(deal.stream.timeline))
+					m('input', m._boundInput(deal.stream.timeline, {
+						placeholder: '30%, $4000, %50, $200.23'
+					}))
 				])
 			])
 		];

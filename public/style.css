@@ -67,17 +67,18 @@ a:hover{
 [sorting]{
 	cursor:pointer;
 	color:#fff;
-	text-decoration:underline;
 }
 [sorting=""]{
 	color:inherit;
-	text-decoration:none;
 }
 [sorting]:before{
 	padding-right:5px;
+	text-decoration:underline;
 }
 [sorting=""]:before{
+	color:#03a8f5;
 	content: "\296e ";
+	text-decoration:none;
 }
 [sorting="asc"]:before{
 	content: "\2191 ";
@@ -121,6 +122,9 @@ tr.body > *{
 input{
 	width:3em;
 	border-bottom:1px dotted #000;
+}
+input::placeholder{
+	color:#ddd;
 }
 input, button{
 	display:inline-block;
