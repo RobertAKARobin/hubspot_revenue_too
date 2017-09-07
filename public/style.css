@@ -16,12 +16,23 @@
 	color: inherit;
 	background-color:transparent;
 }
+*:focus{
+	outline:none;
+}
 html, body{
 	font-family: "Nunito Sans", "Helvetica Neue", "Helvetica", sans-serif;
 	font-size:14px;
 	line-height:24px;
 	color:#000;
 	background-color:#fff;
+}
+h1{
+	color: #14264a;
+	font-size:36px;
+	line-height:42px;
+	margin:10px 3px;
+	font-family:"Roboto Slab", Palatino, serif;
+	font-weight:bold;
 }
 a{
 	color:inherit;
@@ -31,21 +42,7 @@ a{
 a:hover{
 	color:#03a8f5;
 }
-table{
-	width:100%;
-}
-table, th, td{
-	border-collapse:collapse;
-}
-th, td{
-	vertical-align: top;
-	text-align: left;
-	padding:3px 5px;
-	border-style:solid;
-	border-color:rgba(0,0,0,0.1);
-	border-width:1px 1px 0 0;
-	background-color:#e0e0e0;
-}
+
 .colheaders th{
 	background-color:#14264a;
 	font-weight:bold;
@@ -59,20 +56,11 @@ th, td{
 	border-radius:0;
 	color:#fff;
 }
-.colheaders input:focus{
+.colheaders button{
 	background-color:#999;
-}
-.subheaders th{
-	background-color:#fff;
-	border:0;
-}
-.number,
-.date,
-[type="number"]{
-	text-align:right;
-}
-.number input{
-	text-align:right;
+	color:#fff;
+	border-color:#777;
+	font-weight:normal;
 }
 [sorting]{
 	cursor:pointer;
@@ -92,35 +80,82 @@ th, td{
 [sorting="desc"]:before{
 	content: "\2193 ";
 }
-input, button{
-	display:inline-block;
-	padding:2px 5px;
-	border-radius:5px;
-	box-sizing:border-box;
+.subheaders > *{
+	border:0;
+	background-color:#ddd;
+}
+table{
+	width:100%;
+	table-layout:fixed;
+}
+table, th, td{
+	border-collapse:collapse;
+}
+th, td{
+	vertical-align: top;
+	text-align: left;
+	padding:5px;
+	overflow:hidden;
+}
+tr label{
+	display:flex;
+	height:100%;
+}
+tr input{
+	flex-grow:1;
+	flex-shrink:1;
+}
+tr.body:nth-of-type(2n + 1) > *{
+	background-color:#f0f0f0;
+	border-top:1px solid #14264a;
+}
+tr.body > *{
+	border-right:1px solid #ddd;
 }
 input{
-	width:5em;
-	border-color:#ddd;
-	border-style:solid;
-	border-width:0 0 1px 0;
-	background-color:#f0f0f0;
+	width:3em;
+	border-bottom:1px dotted #000;
+}
+input, button{
+	display:inline-block;
+	margin-right:3px;
+	box-sizing:border-box;
+}
+button{
+	padding:0 10px;
+}
+p{
+	padding:0 3px;
+	margin:10px 0;
+}
+.number,
+.date{
+	text-align:right;
 }
 input[type="number"]{
-	width:4em;
-	padding-left:0;
-	padding-right:0;
 	text-align:right;
+	-moz-appearance:textfield;
+}
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
 input:focus{
 	outline:none;
-	background-color:#aaa;
+	background-color:#eee;
+}
+input.dirty{
+	border-color:#f00;
 }
 button{
 	cursor:pointer;
 	color:#14264a;
-	margin:0 3px;
-	background-color:#ccc;
-	border-bottom:1px solid #aaa;
+	border-radius:3px;
+	border:1px solid #ccc;
+	background-color:#f0f0f0;
+	border-width:0 0 1px 1px;
+	text-align:center;
 }
 button:hover{
 	background-color:#999;

@@ -5,6 +5,7 @@ m._boundInput = function(stream, attrs){
 	attrs.value = stream();
 	attrs.oninput = function(event){
 		event.redraw = false;
+		event.target.classList.add('dirty');
 		m.withAttr('value', stream).call({}, event);
 	};
 	return attrs;
@@ -15,12 +16,13 @@ help.date = function(date, showDays){
 	if(!(date instanceof Date)){
 		date = new Date(parseInt(date) || 0);
 	}
+	var delim = ' / ';
 	var year = date.getFullYear();
 	var month = date.getMonth() + 1;
 	if(showDays){
-		return month + '/' + date.getDate() + '/' + year;
+		return month + delim + date.getDate() + delim + year;
 	}else{
-		return month + '/' + year;
+		return month + delim + year;
 	}
 }
 help.query = function(paramsObject){
@@ -271,14 +273,11 @@ var DealsList = (function(){
 	var views = {};
 	views.headerRow = function(){
 		var row = [
-			m('th', ''),
-			m('th', views.sortable('dealname'), 'Name'),
+			m('th'),
 			m('th', views.sortable('probability_'), 'Probability'),
 			m('th', views.sortable('amount'), 'Amount'),
 			m('th', views.sortable('closedate'), 'Close date'),
-			m('th', ''),
-			m('th', ''),
-			m('th.date', [
+			m('th.number', [
 				m('span', views.sortable('$' + Data.timeline.column_names[0]), ''),
 				m('input', m._boundInput(Data.timeline.start_month, {
 					type: 'number',
@@ -292,7 +291,8 @@ var DealsList = (function(){
 					min: 2000,
 					max: 2040,
 					onkeyup: events.updateTimeChunks
-				}))
+				})),
+				m('button', 'Go')
 			])
 		];
 		for(var i = 1, l = Data.timeline.column_names.length; i < l; i += 1){
@@ -303,86 +303,77 @@ var DealsList = (function(){
 	}
 	views.subheaderRow = function(){
 		var row = [
-			m('th', ''),
-			m('th', [
-				m('span', (Data.loading.doContinue ? 'Loading...' : Data.loading.total + ' loaded, ' + Data.deals.length + ' match')),
-				m('button', {
-					onclick: (Data.loading.continue ? events.stopLoading : events.loadDeals)
-				}, (Data.loading.continue ? 'Cancel' : 'Refresh'))
-			]),
-			m('th.number', [
-				m('input', m._boundInput(Data.filter.probability_low, {
-					type: 'number',
-					min: 0,
-					max: 100
-				})),
-				m('span', ' - '),
-				m('input', m._boundInput(Data.filter.probability_high, {
-					type: 'number', 
-					min: 0,
-					max: 100
-				})),
-				m('button', {onclick: events.filter}, 'Filter')
-			]),
+			m('th'),
+			m('th.number'),
 			m('th.number', '$' + actions.getSumOf('amount').toFixed(2)),
-			m('th', ''),
-			m('th', ''),
-			m('th', '')
+			m('th')
 		];
 		for(var i = 0, l = Data.timeline.column_names.length; i < l; i += 1){
 			var colName = Data.timeline.column_names[i];
 			row.push(m('th.number', '$' + actions.getSumOf('$' + colName).toFixed(2)));
 		}
-		return m('tr.subheaders', row);
+		return m('tr.subheaders.inputs', row);
 	}
 	views.bodyRow = function(deal, index){
-		var row = [
-			m('th', (Data.deals.length - index)),
-			m('td', [
+		var nameRow = [
+			m('th', {
+				colspan: 4
+			}, [
 				m('a', {
 					href: 'https://app.hubspot.com/sales/211554/deal/' + deal.dealId
-				}, deal.dealname),
-			]),
-			m('td.number', [
-				m('input', m._boundInput(deal.stream['probability_'], {
-					type: 'number'
-				}))
-			]),
-			m('td.number', [
-				m('span', '$'),
-				m('input', m._boundInput(deal.stream.amount, {
-					type: 'number'
-				}))
-			]),
-			m('td.date', [
-				m('input', m._boundInput(deal.stream.closedate_chunks.month, {
-					type: 'number'
-				})),
-				'/',
-				m('input', m._boundInput(deal.stream.closedate_chunks.date, {
-					type: 'number'
-				})),
-				'/',
-				m('input', m._boundInput(deal.stream.closedate_chunks.year, {
-					type: 'number'
-				}))
-			]),
-			m('td', [
-				m('input', m._boundInput(deal.stream.timeline, {
-					spellcheck: 'false'
-				}))
-			]),
+				}, (Data.deals.length - index) + '. ' + deal.dealname)
+			])
+		];
+		var bodyRow = [
 			m('td', [
 				m('button', {
 					onclick: events.update.bind(deal)
-				}, 'Update')
+				}, 'Update'),
+			]),
+			m('td', [
+				m('label.number', [
+					m('input', m._boundInput(deal.stream['probability_'], {
+						type: 'number'
+					}))
+				])
+			]),
+			m('td', [
+				m('label.number', [
+					m('span', '$'),
+					m('input', m._boundInput(deal.stream.amount, {
+						type: 'number'
+					}))
+				])
+			]),
+			m('td', [
+				m('label.date', [
+					m('input', m._boundInput(deal.stream.closedate_chunks.month, {
+						type: 'number'
+					})),
+					'/',
+					m('input', m._boundInput(deal.stream.closedate_chunks.date, {
+						type: 'number'
+					})),
+					'/',
+					m('input', m._boundInput(deal.stream.closedate_chunks.year, {
+						type: 'number'
+					}))
+				])
 			])
 		];
 		for(var i = 0, l = Data.timeline.column_names.length; i < l; i += 1){
 			var monthCost = deal['$' + Data.timeline.column_names[i]];
-			row.push(m('td.number', (isNaN(monthCost) ? '' : '$' + monthCost.toFixed(2))));
+			nameRow.push(m('td.number', (isNaN(monthCost) ? '' : '$' + monthCost.toFixed(2))));
+			bodyRow.push(m('td', [
+				m('label', [
+					m('input')
+				])
+			]));
 		}
-		return m('tr', row);
+		return [
+			m('tr.body', nameRow),
+			m('tr.body', bodyRow)
+		];
 	}
 	views.sortable = function(propertyName){
 		return {
@@ -399,6 +390,30 @@ var DealsList = (function(){
 		},
 		view: function(){
 			return [
+				m('h1', 'Deals'),
+				m('p', [
+					m('button', {
+						onclick: (Data.loading.continue ? events.stopLoading : events.loadDeals)
+					}, (Data.loading.continue ? 'Cancel' : 'Refresh')),
+					m('span', (Data.loading.doContinue ? 'Loading...' : Data.loading.total + ' loaded'))
+				]),
+				m('p', [
+					m('label', [
+						m('button', {onclick: events.filter}, 'Filter'),
+						m('span', 'Probability between '),
+						m('input', m._boundInput(Data.filter.probability_low, {
+							type: 'number',
+							min: 0,
+							max: 100
+						})),
+						m('span', ' and '),
+						m('input', m._boundInput(Data.filter.probability_high, {
+							type: 'number', 
+							min: 0,
+							max: 100
+						}))
+					])
+				]),
 				m('table', [
 					views.headerRow(),
 					views.subheaderRow(),
