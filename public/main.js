@@ -392,7 +392,7 @@ var DealsList = (function(){
 					m('button', {
 						onclick: (Data.loading.doContinue ? events.stopLoading : events.loadDeals)
 					}, (Data.loading.doContinue ? 'Cancel' : 'Refresh')),
-					m('span', (Data.loading.doContinue ? 'Loading ' + (Data.loading.total || '') + '...' : Data.loading.total + ' loaded'))
+					m('span', (Data.loading.doContinue ? 'Loading ' + (Data.loading.total || '') + '...' : Data.loading.total + ' loaded in memory. ' + (Data.deals.length || 0) + ' match the current filter.'))
 				]),
 				m('p', [
 					m('button', {onclick: events.filter}, 'Filter'),
