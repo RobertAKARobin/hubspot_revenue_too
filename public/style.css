@@ -93,7 +93,6 @@ a:hover{
 }
 table{
 	width:100%;
-	table-layout:fixed;
 }
 table, th, td{
 	border-collapse:collapse;
@@ -112,27 +111,8 @@ tr input{
 	flex-grow:1;
 	flex-shrink:1;
 }
-tr.body:nth-of-type(2n + 1) > *{
-	background-color:#f0f0f0;
-	border-top:1px solid #14264a;
-}
 tr.body > *{
 	border-right:1px solid #ddd;
-}
-input{
-	width:3em;
-	border-bottom:1px dotted #000;
-}
-input::placeholder{
-	color:#ddd;
-}
-input, button{
-	display:inline-block;
-	margin-right:3px;
-	box-sizing:border-box;
-}
-button{
-	padding:0 10px;
 }
 p{
 	padding:0 3px;
@@ -141,6 +121,20 @@ p{
 .number,
 .date{
 	text-align:right;
+}
+input:not(:last-child),
+button:not(:last-child){
+	margin-right:3px;
+}
+input{
+	border-bottom:1px dotted #000;
+}
+input::placeholder{
+	color:#ccc;
+}
+input:focus{
+	outline:none;
+	background-color:#eee;
 }
 input[type="number"]{
 	text-align:right;
@@ -151,10 +145,6 @@ input::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
-input:focus{
-	outline:none;
-	background-color:#eee;
-}
 button{
 	cursor:pointer;
 	color:#14264a;
@@ -163,7 +153,75 @@ button{
 	background-color:#f0f0f0;
 	border-width:0 0 1px 1px;
 	text-align:center;
+	padding:0 10px;
+	box-sizing:border-box;
 }
 button:hover{
 	background-color:#999;
+}
+.editor{
+	display:block;
+	position:fixed;
+	top:0;
+	left:0;
+	width:100%;
+	height:100%;
+}
+.shadow{
+	display:block;
+	position:absolute;
+	top:0;
+	left:0;
+	width:100%;
+	height:100%;
+	background-color:rgba(0,0,0,0.5);
+}
+.editor > div{
+	display:block;
+	position:relative;
+	margin:10px auto;
+	padding:10px;
+	width:320px;
+	background-color:#fff;
+	border-radius:5px;
+	box-shadow:0 0 30px 3px #333;
+}
+.editor .cancel{
+	float:right;
+	font-size:0;
+	text-decoration:none;
+}
+.editor .cancel:after{
+	font-size:24px;
+	content:'\00d7';
+	color:#666;
+	font-weight:bold;
+}
+.editor button{
+	display:block;
+}
+.editor label,
+.editor button{
+	width:100%;
+	margin:5px auto 10px auto;
+}
+.editor label{
+	display:flex;
+}
+.editor label span{
+	padding-right:5px;
+}
+.editor label span:after{
+	content:':';
+}
+.editor label input{
+	flex-grow:1;
+}
+.editor .date{
+	display:flex;
+}
+.editor .date input{
+	width:1em;
+	flex-grow:1;
+	flex-shrink:1;
 }
