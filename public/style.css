@@ -156,6 +156,9 @@ button{
 	padding:0 10px;
 	box-sizing:border-box;
 }
+button:not(:first-child){
+	margin-left:3px;
+}
 button:hover{
 	background-color:#999;
 }

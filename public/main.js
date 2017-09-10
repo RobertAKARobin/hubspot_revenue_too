@@ -38,9 +38,11 @@ help.query = function(paramsObject){
 var DEFAULT = {
 	probability_low: 50,
 	probability_high: 75,
-	start_year: (new Date().getFullYear()),
-	start_month: (new Date().getMonth() + 1),
-	timeline_chunks: 3,
+	timeline: {
+		start_month: (new Date().getMonth() + 1),
+		start_year: (new Date().getFullYear()),
+		num_months: 3,
+	},
 	properties: {
 		createdate: 'integer',
 		dealname: 'string',
@@ -73,8 +75,9 @@ var Data = {
 		probability_high: m.stream(help.query().probability_high || DEFAULT.probability_high)
 	},
 	timeline: {
-		start_year: m.stream(help.query().start_year || DEFAULT.start_year),
-		start_month: m.stream(help.query().start_month || DEFAULT.start_month),
+		start_year: m.stream(help.query().start_year || DEFAULT.timeline.start_year),
+		start_month: m.stream(help.query().start_month || DEFAULT.timeline.start_month),
+		num_months: m.stream(help.query().num_months || DEFAULT.timeline.num_months),
 		column_names: []
 	}
 };
@@ -200,7 +203,7 @@ var DealsList = (function(){
 			0	// Mili
 		);
 		Data.timeline.column_names = [];
-		for(var i = 0; i < DEFAULT.timeline_chunks; i += 1){
+		for(var i = 0; i < Data.timeline.num_months; i += 1){
 			Data.timeline.column_names.push(help.date(startDate));
 			startDate.setMonth(startDate.getMonth() + 1);
 		}
@@ -233,7 +236,8 @@ var DealsList = (function(){
 	events.updateTimeChunks = function(event){
 		help.query({
 			start_month: Data.timeline.start_month,
-			start_year: Data.timeline.start_year
+			start_year: Data.timeline.start_year,
+			num_months: Data.timeline.num_months
 		});
 		actions.setTimelineStartDate();
 	}
@@ -293,26 +297,9 @@ var DealsList = (function(){
 			m('th', views.sortable('dealname'), 'Name'),
 			m('th', views.sortable('probability_'), 'Probability'),
 			m('th', views.sortable('amount'), 'Amount'),
-			m('th', views.sortable('closedate'), 'Close date'),
-			m('th.number', [
-				m('span', views.sortable('$' + Data.timeline.column_names[0]), ''),
-				views.input(Data.timeline.start_month, {
-					type: 'number',
-					min: 1,
-					max: 12
-				}),
-				m('span', '/'),
-				views.input(Data.timeline.start_year, {
-					type: 'number',
-					min: 2000,
-					max: 2040
-				}),
-				m('button', {
-					onclick: events.updateTimeChunks
-				}, 'Go')
-			])
+			m('th', views.sortable('closedate'), 'Close date')
 		];
-		for(var i = 1, l = Data.timeline.column_names.length; i < l; i += 1){
+		for(var i = 0, l = Data.timeline.column_names.length; i < l; i += 1){
 			var colName = Data.timeline.column_names[i];
 			row.push(m('th.date', views.sortable('$' + colName), colName));
 		}
@@ -369,14 +356,13 @@ var DealsList = (function(){
 	views.controls = function(){
 		return [
 			m('p', [
+				m('span', (Data.loading.doContinue ? 'Loading ' + (Data.loading.total || '') + '...' : Data.loading.total + ' loaded in memory. ' + (Data.deals.length || 0) + ' match the current filter')),
 				m('button', {
 					onclick: (Data.loading.doContinue ? events.stopLoading : events.loadDeals)
-				}, (Data.loading.doContinue ? 'Cancel' : 'Refresh')),
-				m('span', (Data.loading.doContinue ? 'Loading ' + (Data.loading.total || '') + '...' : Data.loading.total + ' loaded in memory. ' + (Data.deals.length || 0) + ' match the current filter.'))
+				}, (Data.loading.doContinue ? 'Cancel' : 'Refresh'))
 			]),
 			m('p', [
-				m('button', {onclick: events.filter}, 'Filter'),
-				m('span', 'Probability between '),
+				m('span', 'Show deals with a probability between '),
 				views.input(Data.filter.probability_low, {
 					type: 'number',
 					min: 0,
@@ -387,7 +373,29 @@ var DealsList = (function(){
 					type: 'number', 
 					min: 0,
 					max: 100
-				})
+				}),
+				m('button', {onclick: events.filter}, 'Filter')
+			]),
+			m('p', [
+				m('span', 'Show '),
+				views.input(Data.timeline.num_months, {
+					type: 'number',
+					min: 1,
+					max: 12
+				}),
+				m('span', ' months starting '),
+				views.input(Data.timeline.start_month, {
+					type: 'number',
+					min: 1,
+					max: 12
+				}),
+				m('span', '/'),
+				views.input(Data.timeline.start_year, {
+					type: 'number',
+					min: 2000,
+					max: 2040
+				}),
+				m('button', {onclick: events.updateTimeChunks}, 'Update')
 			])
 		];
 	}
