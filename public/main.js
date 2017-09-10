@@ -104,7 +104,14 @@ var DealsList = (function(){
 	}
 	actions.parseResponse = function(response){
 		if(response.success && Data.loading.doContinue){
-			response.deals.forEach(actions.parseOneDeal);
+			for(var i = 0, l = response.deals.length; i < l; i++){
+				var input = response.deals[i];
+				var deal = {
+					dealId: input.dealId
+				}
+				actions.enumerateDealProperties(deal, input);
+				Data.dealsById[input.dealId] = deal;
+			}
 			Data.loading.offset = response.offset;
 			Data.loading.total = (0 || Data.loading.total) + response.deals.length;
 		}
@@ -116,26 +123,23 @@ var DealsList = (function(){
 			Data.loading.doContinue = false;
 		}
 	}
-	actions.parseOneDeal = function(input){
-		var deal = {
-			dealId: input.dealId
-		};
+	actions.enumerateDealProperties = function(target, input){
 		for(var propertyName in DEFAULT.properties){
-			var value = (input.properties[propertyName] || {}).value;
+			var value = input.properties[propertyName];
+			value = (value instanceof Object ? value.value : value);
 			switch(DEFAULT.properties[propertyName]){
 				case 'string':
-					deal[propertyName] = (value || '');
+					target[propertyName] = (value || '');
 					break;
 				case 'float':
-					deal[propertyName] = (parseFloat(value) || 0);
+					target[propertyName] = (parseFloat(value) || 0);
 					break;
 				default:
-					deal[propertyName] = (parseInt(value) || 0);
+					target[propertyName] = (parseInt(value) || 0);
 			}
 		}
-		actions.setRevenuesPerMonth(deal);
-		Data.dealsById[input.dealId] = deal;
-		return deal;
+		actions.setRevenuesPerMonth(target);
+		return target;
 	}
 	actions.filterAndAppendDeals = function(){
 		Data.deals = [];
@@ -252,6 +256,30 @@ var DealsList = (function(){
 			date: m.stream(closedate.getDate())
 		}
 		Data.editor.doShow = true;
+	}
+	events.updateDeal = function(event){
+		var inputDeal = this;
+		inputDeal.closedate = new Date(
+			inputDeal.closedate_chunks.year,
+			inputDeal.closedate_chunks.month - 1,
+			inputDeal.closedate_chunks.date
+		).getTime();
+		m.request({
+			url: '/deals/' + inputDeal.dealId,
+			method: 'PUT',
+			data: {
+				deal: inputDeal
+			}
+		}).then(function(response){
+			if(response.success){
+				var input = response.data.deal;
+				var target = Data.dealsById[input.dealId];
+				actions.enumerateDealProperties(target, {properties: input});
+				events.hideEditor();
+			}else{
+				console.log('Womp');
+			}
+		});
 	}
 
 	var views = {};
@@ -413,7 +441,7 @@ var DealsList = (function(){
 					}))
 				]),
 				m('button', {
-
+					onclick: events.updateDeal.bind(deal)
 				}, 'Update')
 			])
 		]);

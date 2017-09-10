@@ -43,5 +43,6 @@ end
 put "/deals/:dealId" do
 	request.body.rewind
 	data = JSON.parse(request.body.read)
+	puts data
 	return json({success: true, data: data})
 end
