@@ -1,14 +1,12 @@
 'use strict';
 
-m._boundInput = function(stream, attrs){
-	var attrs = (attrs || {});
-	attrs.value = stream();
-	attrs.oninput = function(event){
-		event.redraw = false;
-		m.withAttr('value', stream).call({}, event);
-	};
-	return attrs;
-};
+m.withAttr = function(attrName, callback, context, shouldRedraw) {
+	if(shouldRedraw == undefined) shouldRedraw = true;
+	return function(e) {
+		e.redraw = (shouldRedraw ? true : false);
+		callback.call(context || this, attrName in e.currentTarget ? e.currentTarget[attrName] : e.currentTarget.getAttribute(attrName))
+	}
+}
 
 var help = {}
 help.date = function(date, showDays){
@@ -283,6 +281,12 @@ var DealsList = (function(){
 	}
 
 	var views = {};
+	views.input = function(targetStream, attrs){
+		attrs = (attrs || {});
+		attrs.value = targetStream;
+		attrs.oninput = m.withAttr('value', targetStream, null, 0);
+		return m('input', attrs);
+	}
 	views.headerRow = function(){
 		var row = [
 			m('th'),
@@ -292,17 +296,17 @@ var DealsList = (function(){
 			m('th', views.sortable('closedate'), 'Close date'),
 			m('th.number', [
 				m('span', views.sortable('$' + Data.timeline.column_names[0]), ''),
-				m('input', m._boundInput(Data.timeline.start_month, {
+				views.input(Data.timeline.start_month, {
 					type: 'number',
 					min: 1,
 					max: 12
-				})),
+				}),
 				m('span', '/'),
-				m('input', m._boundInput(Data.timeline.start_year, {
+				views.input(Data.timeline.start_year, {
 					type: 'number',
 					min: 2000,
 					max: 2040
-				})),
+				}),
 				m('button', {
 					onclick: events.updateTimeChunks
 				}, 'Go')
@@ -373,17 +377,17 @@ var DealsList = (function(){
 			m('p', [
 				m('button', {onclick: events.filter}, 'Filter'),
 				m('span', 'Probability between '),
-				m('input', m._boundInput(Data.filter.probability_low, {
+				views.input(Data.filter.probability_low, {
 					type: 'number',
 					min: 0,
 					max: 100
-				})),
+				}),
 				m('span', ' and '),
-				m('input', m._boundInput(Data.filter.probability_high, {
+				views.input(Data.filter.probability_high, {
 					type: 'number', 
 					min: 0,
 					max: 100
-				}))
+				})
 			])
 		];
 	}
@@ -399,46 +403,46 @@ var DealsList = (function(){
 				}, 'Cancel'),
 				m('label', [
 					m('span', 'Name'),
-					m('input', m._boundInput(deal.dealname, {
+					views.input(deal.dealname, {
 						placeholder: 'ACME Company - Mobile app'
-					}))
+					})
 				]),
 				m('label', [
 					m('span', 'Probability (%)'),
-					m('input', m._boundInput(deal['probability_'], {
+					views.input(deal['probability_'], {
 						type: 'number',
 						min: 0,
 						max: 100
-					}))
+					})
 				]),
 				m('label', [
 					m('span', 'Amount ($)'),
-					m('input', m._boundInput(deal.amount, {
+					views.input(deal.amount, {
 						type: 'number'
-					}))
+					})
 				]),
 				m('label.date', [
 					m('span', 'Date'),
-					m('input', m._boundInput(deal.closedate_chunks.month, {
+					views.input(deal.closedate_chunks.month, {
 						type: 'number',
 						placeholder: 'MM'
-					})),
+					}),
 					'/',
-					m('input', m._boundInput(deal.closedate_chunks.date, {
+					views.input(deal.closedate_chunks.date, {
 						type: 'number',
 						placeholder: 'DD'
-					})),
+					}),
 					'/',
-					m('input', m._boundInput(deal.closedate_chunks.year, {
+					views.input(deal.closedate_chunks.year, {
 						type: 'number',
 						placeholder: 'YY'
-					}))
+					})
 				]),
 				m('label', [
 					m('span', 'Timeline'),
-					m('input', m._boundInput(deal.timeline, {
+					views.input(deal.timeline, {
 						placeholder: '30%, 30%, $4000.23, %30'
-					}))
+					})
 				]),
 				m('button', {
 					onclick: events.updateDeal.bind(deal)
