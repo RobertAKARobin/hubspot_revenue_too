@@ -9,19 +9,6 @@ m.withAttr = function(attrName, callback, context, shouldRedraw) {
 }
 
 var help = {}
-help.date = function(date, showDays){
-	if(!(date instanceof Date)){
-		date = new Date(parseInt(date) || 0);
-	}
-	var delim = '/';
-	var year = date.getFullYear();
-	var month = date.getMonth() + 1;
-	if(showDays){
-		return month + delim + date.getDate() + delim + year;
-	}else{
-		return month + delim + year;
-	}
-}
 help.query = function(paramsObject){
 	var query = m.parseQueryString((window.location.href.match(/\?.*?$/g) || [])[0]);
 	var newurl = window.location.origin + window.location.pathname;
@@ -33,6 +20,19 @@ help.query = function(paramsObject){
 		window.history.pushState({path: newurl}, '', newurl);
 	}
 	return query;
+}
+help.getNestedProperty = function(object, propertyString){
+	var propertyTree = propertyString.split('.');
+	var currentProperty = null;
+	for(var i = 0, l = propertyTree.length; i < l; i++){
+		currentProperty = object[propertyTree[i]];
+		if(currentProperty === undefined){
+			object = {};
+		}else{
+			object = currentProperty;
+		}
+	}
+	return currentProperty;	
 }
 
 var DEFAULT = {
@@ -139,36 +139,32 @@ var DealsList = (function(){
 					target[propertyName] = (parseInt(value) || 0);
 			}
 		}
-		actions.setRevenuesPerMonth(target);
+		actions.setMonthlyAllocations(target);
 		return target;
 	}
 	actions.filterAndAppendDeals = function(){
 		var startDate = Data.timeline.start_date;
-		var endDate = new Date(startDate);
-		endDate.setMonth(endDate.getMonth() + Data.timeline.num_months);
-		endDate = endDate.getTime();
 		Data.deals = [];
 		Object.values(Data.dealsById).forEach(function(deal){
 			var probabilityInRange = (deal['probability_'] >= Data.filter.probability_low()
 			&& deal['probability_'] <= Data.filter.probability_high());
-			var closeDateInRange = (deal.closedate >= startDate && deal.closedate <= endDate);
-			if(probabilityInRange && closeDateInRange){
+			if(probabilityInRange){
 				Data.deals.push(deal);
 			}
 		});
 	}
-	actions.sortDeals = function(propertyName){
-		var nonAlphanum = /[^a-zA-Z0-9]/g;
-		var nonNum = /[^0-9\.]/g;
-		Data.sort.property = propertyName;
+	actions.sortDeals = function(sortProperty){
+		var matchNonAlphanumeric = /[^a-zA-Z0-9]/g;
+		var matchNumeric = /[^0-9\.]/g;
+		Data.sort.property = sortProperty;
 		Data.sort.direction = (Data.sort.direction == 'asc' ? 'desc' : 'asc');
 		Data.deals.sort(function(a, b){
-			var valA = (a[propertyName] || '').toString();
-			var valB = (b[propertyName] || '').toString();
-			var valAString = valA.replace(nonAlphanum, '').toLowerCase();
-			var valBString = valB.replace(nonAlphanum, '').toLowerCase();
-			valA = (isNaN(valAString) ? valAString : parseFloat(valA.replace(nonNum, '')) || '');
-			valB = (isNaN(valBString) ? valBString : parseFloat(valB.replace(nonNum, '')) || '');
+			var valA = (help.getNestedProperty(a, sortProperty) || '').toString();
+			var valB = (help.getNestedProperty(b, sortProperty) || '').toString();
+			var valAString = valA.replace(matchNonAlphanumeric, '').toLowerCase();
+			var valBString = valB.replace(matchNonAlphanumeric, '').toLowerCase();
+			valA = (isNaN(valAString) ? valAString : parseFloat(valA.replace(matchNumeric, '')) || '');
+			valB = (isNaN(valBString) ? valBString : parseFloat(valB.replace(matchNumeric, '')) || '');
 			if(valA > valB){
 				return (Data.sort.direction == 'asc' ? 1 : -1);
 			}else if(valA < valB){
@@ -178,47 +174,42 @@ var DealsList = (function(){
 			}
 		});
 	}
-	actions.setRevenuesPerMonth = function(deal){
-		var num = '\\d+\\.?\\d{0,2}';
-		var matcher = new RegExp('\\$' + num + '|' + '%' + num + '|' + num + '%', 'g');
-		var timeChunks = (deal.timeline.match(matcher) || []);
-		var startDate = new Date(parseInt(deal.closedate) || 0);
-		// Clear old time chunks
-		for(var propertyName in deal){
-			if(propertyName.substring(0,1) == '$'){
-				deal[propertyName] = '';
+	actions.setMonthlyAllocations = function(deal){
+		var matchAllNumbers = /\$\d+\.?\d{0,2}|%\d+\.?\d{0,2}|\d+\.?\d{0,2}%/g;
+		var monthlyAllocations = (deal.timeline.match(matchAllNumbers) || []);
+		var closeDate = new Date(parseInt(deal.closedate) || 0);
+		var startDate = new Date(closeDate.getFullYear(), closeDate.getMonth());
+
+		deal.monthlyAllocations = {};
+		var matchNonNumber = /[^\d\.]/g;
+		for(var i = 0, l = monthlyAllocations.length; i < l; i++){
+			var monthlyAllocation = monthlyAllocations[i];
+			var numericValueForMonth = parseFloat(monthlyAllocation.replace(matchNonNumber, ''));
+			if(/%/.test(monthlyAllocation)){
+				var dollarValueForMonth = (numericValueForMonth * (deal.amount / 100));
+			}else{
+				var dollarValueForMonth = numericValueForMonth;
 			}
-		}
-		for(var i = 0, l = timeChunks.length; i < l; i++){
-			var chunkValue = parseFloat(timeChunks[i].replace(/[^\d\.]/g,''));
-			if(/%/.test(timeChunks[i])){
-				chunkValue = (chunkValue * (deal.amount / 100));
-			}
-			deal['$' + help.date(startDate)] = chunkValue;
+			deal.monthlyAllocations[startDate.getTime()] = dollarValueForMonth;
 			startDate.setMonth(startDate.getMonth() + 1);
 		}
 	}
 	actions.setTimelineRange = function(){
 		var startDate = new Date(
 			Data.timeline.start_year(),
-			Data.timeline.start_month() - 1,
-			1,	// Day of month
-			0,	// Hours
-			0,	// Minutes
-			0,	// Seconds
-			0	// Mili
+			Data.timeline.start_month() - 1
 		);
 		Data.timeline.start_date = startDate.getTime();
 		Data.timeline.column_names = [];
 		for(var i = 0; i < Data.timeline.num_months; i += 1){
-			Data.timeline.column_names.push(help.date(startDate));
+			Data.timeline.column_names.push(startDate.getTime());
 			startDate.setMonth(startDate.getMonth() + 1);
 		}
 	}
-	actions.getSumOf = function(propertyName){
+	actions.getSumOfDeals = function(propertyName){
 		var result = 0;
 		for(var i = 0, l = Data.deals.length; i < l; i++){
-			result += (parseFloat(Data.deals[i][propertyName]) || 0);
+			result += (parseFloat(help.getNestedProperty(Data.deals[i], propertyName)) || 0);
 		}
 		return result;
 	}
@@ -293,6 +284,19 @@ var DealsList = (function(){
 	}
 
 	var views = {};
+	views.date = function(date, showDays){
+		if(!(date instanceof Date)){
+			date = new Date(parseInt(date) || 0);
+		}
+		var delim = '/';
+		var year = date.getFullYear();
+		var month = date.getMonth() + 1;
+		if(showDays){
+			return month + delim + date.getDate() + delim + year;
+		}else{
+			return month + delim + year;
+		}
+	}
 	views.input = function(targetStream, attrs){
 		attrs = (attrs || {});
 		attrs.value = targetStream;
@@ -309,7 +313,7 @@ var DealsList = (function(){
 		];
 		for(var i = 0, l = Data.timeline.column_names.length; i < l; i += 1){
 			var colName = Data.timeline.column_names[i];
-			row.push(m('th.date', views.sortable('$' + colName), colName));
+			row.push(m('th.date', views.sortable('monthlyAllocations.' + colName), views.date(colName)));
 		}
 		row.push(m('th'));
 		return m('tr.colheaders', row);
@@ -319,12 +323,12 @@ var DealsList = (function(){
 			m('th'),
 			m('th', 'TOTALS'),
 			m('th.number'),
-			m('th.number', '$' + actions.getSumOf('amount').toFixed(2)),
+			m('th.number', '$' + actions.getSumOfDeals('amount').toFixed(2)),
 			m('th'),
 		];
 		for(var i = 0, l = Data.timeline.column_names.length; i < l; i += 1){
 			var colName = Data.timeline.column_names[i];
-			row.push(m('th.number', '$' + actions.getSumOf('$' + colName).toFixed(2)));
+			row.push(m('th.number', '$' + actions.getSumOfDeals('monthlyAllocations.' + colName).toFixed(2)));
 		}
 		row.push(m('th'));
 		return m('tr.subheaders.inputs', row);
@@ -339,10 +343,10 @@ var DealsList = (function(){
 			]),
 			m('td.number', deal.probability_),
 			m('td.number', '$' + deal.amount.toFixed(2)),
-			m('td.number', help.date(deal.closedate, 1)),
+			m('td.number', views.date(deal.closedate, 1)),
 		];
 		for(var i = 0, l = Data.timeline.column_names.length; i < l; i += 1){
-			var monthCost = (deal['$' + Data.timeline.column_names[i]] || 0);
+			var monthCost = (deal.monthlyAllocations[Data.timeline.column_names[i]] || 0);
 			nameRow.push(m('td.number', (isNaN(monthCost) ? '' : '$' + monthCost.toFixed(2))));
 		}
 		nameRow.push(m('td', [
