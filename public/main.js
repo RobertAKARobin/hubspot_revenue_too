@@ -143,10 +143,16 @@ var DealsList = (function(){
 		return target;
 	}
 	actions.filterAndAppendDeals = function(){
+		var startDate = Data.timeline.start_date;
+		var endDate = new Date(startDate);
+		endDate.setMonth(endDate.getMonth() + Data.timeline.num_months);
+		endDate = endDate.getTime();
 		Data.deals = [];
 		Object.values(Data.dealsById).forEach(function(deal){
-			if(deal['probability_'] >= Data.filter.probability_low()
-			&& deal['probability_'] <= Data.filter.probability_high()){
+			var probabilityInRange = (deal['probability_'] >= Data.filter.probability_low()
+			&& deal['probability_'] <= Data.filter.probability_high());
+			var closeDateInRange = (deal.closedate >= startDate && deal.closedate <= endDate);
+			if(probabilityInRange && closeDateInRange){
 				Data.deals.push(deal);
 			}
 		});
@@ -192,7 +198,7 @@ var DealsList = (function(){
 			startDate.setMonth(startDate.getMonth() + 1);
 		}
 	}
-	actions.setTimelineStartDate = function(){
+	actions.setTimelineRange = function(){
 		var startDate = new Date(
 			Data.timeline.start_year(),
 			Data.timeline.start_month() - 1,
@@ -202,6 +208,7 @@ var DealsList = (function(){
 			0,	// Seconds
 			0	// Mili
 		);
+		Data.timeline.start_date = startDate.getTime();
 		Data.timeline.column_names = [];
 		for(var i = 0; i < Data.timeline.num_months; i += 1){
 			Data.timeline.column_names.push(help.date(startDate));
@@ -233,13 +240,14 @@ var DealsList = (function(){
 		});
 		actions.filterAndAppendDeals();
 	}
-	events.updateTimeChunks = function(event){
+	events.setTimelineRange = function(event){
 		help.query({
 			start_month: Data.timeline.start_month,
 			start_year: Data.timeline.start_year,
 			num_months: Data.timeline.num_months
 		});
-		actions.setTimelineStartDate();
+		actions.setTimelineRange();
+		actions.filterAndAppendDeals();
 	}
 	events.hideEditor = function(event){
 		Data.editor.deal = null;
@@ -395,7 +403,7 @@ var DealsList = (function(){
 					min: 2000,
 					max: 2040
 				}),
-				m('button', {onclick: events.updateTimeChunks}, 'Update')
+				m('button', {onclick: events.setTimelineRange}, 'Update')
 			])
 		];
 	}
@@ -461,7 +469,7 @@ var DealsList = (function(){
 
 	return {
 		oninit: function(){
-			actions.setTimelineStartDate();
+			actions.setTimelineRange();
 		},
 		view: function(){
 			return [
