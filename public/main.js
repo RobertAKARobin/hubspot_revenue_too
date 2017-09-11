@@ -97,6 +97,7 @@ var DealsList = (function(){
 		loadNextPage: function(){
 			m.request({
 				url: '/deals',
+				method: 'GET',
 				data: {
 					limit: 250,
 					offset: (Data.loading.offset || 0),
@@ -274,6 +275,7 @@ var DealsList = (function(){
 					deal: inputDeal
 				}
 			}).then(function(response){
+				console.log(response)
 				if(response.success){
 					var input = response.data.deal;
 					var target = Data.dealsById[input.dealId];
