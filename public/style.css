@@ -67,24 +67,21 @@ a:hover{
 [sorting]{
 	cursor:pointer;
 	color:#fff;
+	text-decoration:underline;
 }
 [sorting=""]{
 	color:inherit;
-}
-[sorting]:before{
-	padding-right:5px;
-	text-decoration:underline;
-}
-[sorting=""]:before{
-	color:#03a8f5;
-	content: "\296e ";
 	text-decoration:none;
 }
+[sorting=""]:before{
+	color:#aaa;
+	content: "\296e  ";
+}
 [sorting="asc"]:before{
-	content: "\2191 ";
+	content: "\2191  ";
 }
 [sorting="desc"]:before{
-	content: "\2193 ";
+	content: "\2193  ";
 }
 .subheaders > *{
 	border:0;
