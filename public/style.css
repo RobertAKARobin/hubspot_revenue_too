@@ -224,6 +224,9 @@ button:hover{
 .editor label span:after{
 	content:':';
 }
+.editor label.date span:after{
+	content:'';
+}
 .editor label input,
 .editor label textarea{
 	flex-grow:1;
@@ -242,4 +245,7 @@ button:hover{
 }
 [highlight-toggle]{
 	cursor:pointer;
+}
+.revenue{
+	background-color:#f6f6f6;
 }
