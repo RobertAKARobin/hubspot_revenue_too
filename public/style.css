@@ -123,15 +123,20 @@ input:not(:last-child),
 button:not(:last-child){
 	margin-right:3px;
 }
-input{
+input,
+textarea{
 	border-bottom:1px dotted #000;
 }
-input::placeholder{
+::placeholder{
 	color:#ccc;
 }
-input:focus{
+input:focus,
+textarea:focus{
 	outline:none;
 	background-color:#eee;
+}
+textarea{
+	height:100px;
 }
 input[type="number"]{
 	text-align:right;
@@ -214,7 +219,8 @@ button:hover{
 .editor label span:after{
 	content:':';
 }
-.editor label input{
+.editor label input,
+.editor label textarea{
 	flex-grow:1;
 }
 .editor .date{

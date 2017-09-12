@@ -39,7 +39,7 @@ var help = {
 var DEFAULT = {
 	probability_low: 50,
 	probability_high: 75,
-	timeline: {
+	schedule: {
 		start_month: (new Date().getMonth() + 1),
 		start_year: (new Date().getFullYear()),
 		num_months: 3,
@@ -50,7 +50,7 @@ var DEFAULT = {
 		'probability_': 'integer',
 		amount: 'float', 
 		closedate: 'integer',
-		timeline: 'string'
+		schedule: 'string'
 	}
 }
 
@@ -75,10 +75,10 @@ var Data = {
 		probability_low: m.stream(help.query().probability_low || DEFAULT.probability_low),
 		probability_high: m.stream(help.query().probability_high || DEFAULT.probability_high)
 	},
-	timeline: {
-		start_year: m.stream(help.query().start_year || DEFAULT.timeline.start_year),
-		start_month: m.stream(help.query().start_month || DEFAULT.timeline.start_month),
-		num_months: m.stream(help.query().num_months || DEFAULT.timeline.num_months),
+	schedule: {
+		start_year: m.stream(help.query().start_year || DEFAULT.schedule.start_year),
+		start_month: m.stream(help.query().start_month || DEFAULT.schedule.start_month),
+		num_months: m.stream(help.query().num_months || DEFAULT.schedule.num_months),
 		column_names: []
 	}
 };
@@ -145,7 +145,7 @@ var DealsList = (function(){
 			return target;
 		},
 		filterAndAppendDeals: function(){
-			var startDate = Data.timeline.start_date;
+			var startDate = Data.schedule.start_date;
 			Data.deals = [];
 			Object.values(Data.dealsById).forEach(function(deal){
 				var probabilityInRange = (deal['probability_'] >= Data.filter.probability_low()
@@ -177,8 +177,8 @@ var DealsList = (function(){
 			});
 		},
 		setMonthlyAllocations: function(deal){
-			var matchAllNumbers = /\$\d+\.?\d{0,2}|%\d+\.?\d{0,2}|\d+\.?\d{0,2}%/g;
-			var monthlyAllocations = (deal.timeline.match(matchAllNumbers) || []);
+			var matchAllNumbers = /\$\d+\.?\d{0,2}|%\d+\.?\d{0,2}|\d+\.?\d{0,2}%/gm;
+			var monthlyAllocations = (deal.schedule.match(matchAllNumbers) || []);
 			var closeDate = new Date(parseInt(deal.closedate) || 0);
 			var startDate = new Date(closeDate.getFullYear(), closeDate.getMonth());
 	
@@ -196,15 +196,15 @@ var DealsList = (function(){
 				startDate.setMonth(startDate.getMonth() + 1);
 			}
 		},
-		setTimelineRange: function(){
+		setscheduleRange: function(){
 			var startDate = new Date(
-				Data.timeline.start_year(),
-				Data.timeline.start_month() - 1
+				Data.schedule.start_year(),
+				Data.schedule.start_month() - 1
 			);
-			Data.timeline.start_date = startDate.getTime();
-			Data.timeline.column_names = [];
-			for(var i = 0; i < Data.timeline.num_months; i += 1){
-				Data.timeline.column_names.push(startDate.getTime());
+			Data.schedule.start_date = startDate.getTime();
+			Data.schedule.column_names = [];
+			for(var i = 0; i < Data.schedule.num_months; i += 1){
+				Data.schedule.column_names.push(startDate.getTime());
 				startDate.setMonth(startDate.getMonth() + 1);
 			}
 		},
@@ -234,13 +234,13 @@ var DealsList = (function(){
 			});
 			actions.filterAndAppendDeals();
 		},
-		setTimelineRange: function(event){
+		setscheduleRange: function(event){
 			help.query({
-				start_month: Data.timeline.start_month,
-				start_year: Data.timeline.start_year,
-				num_months: Data.timeline.num_months
+				start_month: Data.schedule.start_month,
+				start_year: Data.schedule.start_year,
+				num_months: Data.schedule.num_months
 			});
-			actions.setTimelineRange();
+			actions.setscheduleRange();
 			actions.filterAndAppendDeals();
 		},
 		hideEditor: function(event){
@@ -302,11 +302,11 @@ var DealsList = (function(){
 				return month + delim + year;
 			}
 		},
-		input: function(targetStream, attrs){
+		input: function(targetStream, attrs, elementType){
 			attrs = (attrs || {});
 			attrs.value = targetStream;
 			attrs.oninput = m.withAttr('value', targetStream, null, 0);
-			return m('input', attrs);
+			return m((elementType || 'input'), attrs);
 		},
 		headerRow: function(){
 			var row = [
@@ -316,8 +316,8 @@ var DealsList = (function(){
 				m('th', views.sortable('amount'), 'Amount'),
 				m('th', views.sortable('closedate'), 'Close date')
 			];
-			for(var i = 0, l = Data.timeline.column_names.length; i < l; i += 1){
-				var colName = Data.timeline.column_names[i];
+			for(var i = 0, l = Data.schedule.column_names.length; i < l; i += 1){
+				var colName = Data.schedule.column_names[i];
 				row.push(m('th.date', views.sortable('monthlyAllocations.' + colName), views.date(colName)));
 			}
 			row.push(m('th'));
@@ -331,8 +331,8 @@ var DealsList = (function(){
 				m('th.number', '$' + actions.getSumOfDeals('amount').toFixed(2)),
 				m('th'),
 			];
-			for(var i = 0, l = Data.timeline.column_names.length; i < l; i += 1){
-				var colName = Data.timeline.column_names[i];
+			for(var i = 0, l = Data.schedule.column_names.length; i < l; i += 1){
+				var colName = Data.schedule.column_names[i];
 				row.push(m('th.number', '$' + actions.getSumOfDeals('monthlyAllocations.' + colName).toFixed(2)));
 			}
 			row.push(m('th'));
@@ -350,8 +350,8 @@ var DealsList = (function(){
 				m('td.number', '$' + deal.amount.toFixed(2)),
 				m('td.number', views.date(deal.closedate, 1)),
 			];
-			for(var i = 0, l = Data.timeline.column_names.length; i < l; i += 1){
-				var monthCost = (deal.monthlyAllocations[Data.timeline.column_names[i]] || 0);
+			for(var i = 0, l = Data.schedule.column_names.length; i < l; i += 1){
+				var monthCost = (deal.monthlyAllocations[Data.schedule.column_names[i]] || 0);
 				nameRow.push(m('td.number', (isNaN(monthCost) ? '' : '$' + monthCost.toFixed(2))));
 			}
 			nameRow.push(m('td', [
@@ -395,24 +395,24 @@ var DealsList = (function(){
 				]),
 				m('p', [
 					m('span', 'Show '),
-					views.input(Data.timeline.num_months, {
+					views.input(Data.schedule.num_months, {
 						type: 'number',
 						min: 1,
 						max: 12
 					}),
 					m('span', ' months starting '),
-					views.input(Data.timeline.start_month, {
+					views.input(Data.schedule.start_month, {
 						type: 'number',
 						min: 1,
 						max: 12
 					}),
 					m('span', '/'),
-					views.input(Data.timeline.start_year, {
+					views.input(Data.schedule.start_year, {
 						type: 'number',
 						min: 2000,
 						max: 2040
 					}),
-					m('button', {onclick: events.setTimelineRange}, 'Update')
+					m('button', {onclick: events.setscheduleRange}, 'Update')
 				])
 			];
 		},
@@ -464,10 +464,10 @@ var DealsList = (function(){
 						})
 					]),
 					m('label', [
-						m('span', 'Timeline'),
-						views.input(deal.timeline, {
-							placeholder: '30%, 30%, $4000.23, %30'
-						})
+						m('span', 'Schedule'),
+						views.input(deal.schedule, {
+							placeholder: '30%\n30%\n$4000.23\n%30'
+						}, 'textarea')
 					]),
 					m('button', {
 						onclick: events.updateDeal.bind(deal)
@@ -479,7 +479,7 @@ var DealsList = (function(){
 
 	return {
 		oninit: function(){
-			actions.setTimelineRange();
+			actions.setscheduleRange();
 		},
 		view: function(){
 			return [
