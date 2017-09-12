@@ -73,7 +73,8 @@ var Data = {
 	},
 	filter: {
 		probability_low: m.stream(help.query().probability_low || DEFAULT.probability_low),
-		probability_high: m.stream(help.query().probability_high || DEFAULT.probability_high)
+		probability_high: m.stream(help.query().probability_high || DEFAULT.probability_high),
+		limit_to_schedule: m.stream(false)
 	},
 	schedule: {
 		start_year: m.stream(help.query().start_year || DEFAULT.schedule.start_year),
@@ -106,6 +107,7 @@ var DealsList = (function(){
 			}).then(actions.parseResponse);
 		},
 		parseResponse: function(response){
+			console.log(response)
 			if(response.success && Data.loading.doContinue){
 				for(var i = 0, l = response.deals.length; i < l; i++){
 					var input = response.deals[i];
@@ -145,12 +147,27 @@ var DealsList = (function(){
 			return target;
 		},
 		filterAndAppendDeals: function(){
-			var startDate = Data.schedule.start_date;
+			var startDate = new Date(parseInt(Data.schedule.start_year()), parseInt(Data.schedule.start_month()) - 1);
+			var endDate = new Date(parseInt(startDate.getFullYear()), parseInt(startDate.getMonth()) + parseInt(Data.schedule.num_months()), 1, 0, 0, -1);
 			Data.deals = [];
 			Object.values(Data.dealsById).forEach(function(deal){
-				var probabilityInRange = (deal['probability_'] >= Data.filter.probability_low()
-				&& deal['probability_'] <= Data.filter.probability_high());
-				if(probabilityInRange){
+				var dealCloseDate = new Date(deal.closedate || 0);
+				var dealStartDate = new Date(dealCloseDate.getFullYear(), dealCloseDate.getMonth());
+				var numMonths = Object.keys(deal.monthlyAllocations).length;
+				var dealEndDate = new Date(dealStartDate.getFullYear(), dealStartDate.getMonth() + numMonths);
+
+				var progressInRange = (
+					deal['probability_'] >= parseInt(Data.filter.probability_low())
+					&& deal['probability_'] <= parseInt(Data.filter.probability_high())
+				);
+				var scheduleInRange = true;
+				if(Data.filter.limit_to_schedule()){
+					scheduleInRange = (
+						(dealStartDate <= startDate && dealEndDate >= startDate)
+						|| (dealStartDate <= endDate && dealEndDate >= endDate)
+					);
+				}
+				if(progressInRange && scheduleInRange){
 					Data.deals.push(deal);
 				}
 			});
@@ -177,11 +194,11 @@ var DealsList = (function(){
 			});
 		},
 		setMonthlyAllocations: function(deal){
-			var matchAllNumbers = /\$\d+\.?\d{0,2}|%\d+\.?\d{0,2}|\d+\.?\d{0,2}%/gm;
+			var matchAllNumbers = /\$\d+\.?\d{0,2}|%\d+\.?\d{0,2}|\d+\.?\d{0,2}%|\d+\.?\d{0,2}/gm;
 			var monthlyAllocations = (deal.schedule.match(matchAllNumbers) || []);
 			var closeDate = new Date(parseInt(deal.closedate) || 0);
 			var startDate = new Date(closeDate.getFullYear(), closeDate.getMonth());
-	
+
 			deal.monthlyAllocations = {};
 			var matchNonNumber = /[^\d\.]/g;
 			for(var i = 0, l = monthlyAllocations.length; i < l; i++){
@@ -196,7 +213,7 @@ var DealsList = (function(){
 				startDate.setMonth(startDate.getMonth() + 1);
 			}
 		},
-		setscheduleRange: function(){
+		setScheduleRange: function(){
 			var startDate = new Date(
 				Data.schedule.start_year(),
 				Data.schedule.start_month() - 1
@@ -234,13 +251,13 @@ var DealsList = (function(){
 			});
 			actions.filterAndAppendDeals();
 		},
-		setscheduleRange: function(event){
+		setScheduleRange: function(event){
 			help.query({
 				start_month: Data.schedule.start_month,
 				start_year: Data.schedule.start_year,
 				num_months: Data.schedule.num_months
 			});
-			actions.setscheduleRange();
+			actions.setScheduleRange();
 			actions.filterAndAppendDeals();
 		},
 		hideEditor: function(event){
@@ -285,6 +302,10 @@ var DealsList = (function(){
 					console.log('Womp');
 				}
 			});
+		},
+		updateLimitToScheduleFilter: function(event){
+			Data.filter.limit_to_schedule(!!(event.target.checked));
+			actions.filterAndAppendDeals();
 		}
 	};
 
@@ -378,22 +399,7 @@ var DealsList = (function(){
 						onclick: (Data.loading.doContinue ? events.stopLoading : events.loadDeals)
 					}, (Data.loading.doContinue ? 'Cancel' : 'Refresh'))
 				]),
-				m('p', [
-					m('span', 'Show deals with a probability between '),
-					views.input(Data.filter.probability_low, {
-						type: 'number',
-						min: 0,
-						max: 100
-					}),
-					m('span', ' and '),
-					views.input(Data.filter.probability_high, {
-						type: 'number', 
-						min: 0,
-						max: 100
-					}),
-					m('button', {onclick: events.filter}, 'Filter')
-				]),
-				m('p', [
+				m('label', [
 					m('span', 'Show '),
 					views.input(Data.schedule.num_months, {
 						type: 'number',
@@ -412,7 +418,30 @@ var DealsList = (function(){
 						min: 2000,
 						max: 2040
 					}),
-					m('button', {onclick: events.setscheduleRange}, 'Update')
+					m('button', {onclick: events.setScheduleRange}, 'Update')
+				]),
+				m('label', [
+					m('span', 'Show deals with a probability between '),
+					views.input(Data.filter.probability_low, {
+						type: 'number',
+						min: 0,
+						max: 100
+					}),
+					m('span', ' and '),
+					views.input(Data.filter.probability_high, {
+						type: 'number', 
+						min: 0,
+						max: 100
+					}),
+					m('button', {onclick: events.filter}, 'Filter')
+				]),
+				m('label', [
+					m('span', 'Show only deals that will be in progress during the specified months?'),
+					m('input', {
+						type: 'checkbox',
+						value: Data.filter.limit_to_schedule(),
+						onchange: events.updateLimitToScheduleFilter
+					})
 				])
 			];
 		},
@@ -479,7 +508,7 @@ var DealsList = (function(){
 
 	return {
 		oninit: function(){
-			actions.setscheduleRange();
+			actions.setScheduleRange();
 		},
 		view: function(){
 			return [

@@ -111,7 +111,8 @@ tr input{
 tr.body > *{
 	border-right:1px solid #ddd;
 }
-p{
+p, label{
+	display:block;
 	padding:0 3px;
 	margin:10px 0;
 }
@@ -137,6 +138,10 @@ textarea:focus{
 }
 textarea{
 	height:100px;
+}
+input[type="checkbox"]{
+	display:inline-block;
+	margin:0 5px;
 }
 input[type="number"]{
 	text-align:right;
