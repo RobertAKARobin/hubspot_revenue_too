@@ -236,3 +236,10 @@ button:hover{
 	flex-grow:1;
 	flex-shrink:1;
 }
+[highlight],
+[highlight-toggle]:hover{
+	background-color:#ff6;
+}
+[highlight-toggle]{
+	cursor:pointer;
+}

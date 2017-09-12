@@ -66,6 +66,7 @@ var Data = {
 	},
 	deals: [],
 	dealsById: {},
+	highlight: [],
 	serverResponse: '',
 	sort: {
 		property: '',
@@ -265,6 +266,15 @@ var DealsList = (function(){
 			Data.editor.deal = null;
 			Data.editor.doShow = false;
 		},
+		highlight: function(event){
+			var deal = this;
+			var highlightNum = Data.highlight.indexOf(deal.dealId);
+			if(highlightNum >= 0){
+				Data.highlight.splice(highlightNum, 1);
+			}else{
+				Data.highlight.push(deal.dealId);
+			}
+		},
 		showEditor: function(event){
 			var deal = this;
 			var editedDeal = Data.editor.deal = {};
@@ -362,7 +372,10 @@ var DealsList = (function(){
 		},
 		bodyRow: function(deal, index){
 			var nameRow = [
-				m('td', (Data.deals.length - index)),
+				m('td', {
+					'highlight-toggle': true,
+					onclick: events.highlight.bind(deal)
+				}, Data.deals.length - index),
 				m('th', [
 					m('a', {
 						href: 'https://app.hubspot.com/sales/211554/deal/' + deal.dealId
@@ -382,7 +395,9 @@ var DealsList = (function(){
 				}, 'Edit')
 			]));
 			return [
-				m('tr.body', nameRow)
+				m('tr.body', {
+					'highlight': (Data.highlight.indexOf(deal.dealId) >= 0)
+				}, nameRow)
 			];
 		},
 		sortable: function(propertyName){
