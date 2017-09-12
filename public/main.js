@@ -107,7 +107,6 @@ var DealsList = (function(){
 			}).then(actions.parseResponse);
 		},
 		parseResponse: function(response){
-			console.log(response)
 			if(response.success && Data.loading.doContinue){
 				for(var i = 0, l = response.deals.length; i < l; i++){
 					var input = response.deals[i];
@@ -128,23 +127,24 @@ var DealsList = (function(){
 				Data.loading.doContinue = false;
 			}
 		},
-		enumerateDealProperties: function(target, input){
+		enumerateDealProperties: function(deal, input){
 			for(var propertyName in DEFAULT.properties){
 				var value = input.properties[propertyName];
 				value = (value instanceof Object ? value.value : value);
 				switch(DEFAULT.properties[propertyName]){
 					case 'string':
-						target[propertyName] = (value || '');
+						deal[propertyName] = (value || '');
 						break;
 					case 'float':
-						target[propertyName] = (parseFloat(value) || 0);
+						deal[propertyName] = (parseFloat(value) || 0);
 						break;
 					default:
-						target[propertyName] = (parseInt(value) || 0);
+						deal[propertyName] = (parseInt(value) || 0);
 				}
 			}
-			actions.setMonthlyAllocations(target);
-			return target;
+			deal.schedule = (deal.schedule || deal.amount.toString());
+			actions.setMonthlyAllocations(deal);
+			return deal;
 		},
 		filterAndAppendDeals: function(){
 			var startDate = new Date(parseInt(Data.schedule.start_year()), parseInt(Data.schedule.start_month()) - 1);
@@ -165,6 +165,7 @@ var DealsList = (function(){
 					scheduleInRange = (
 						(dealStartDate <= startDate && dealEndDate >= startDate)
 						|| (dealStartDate <= endDate && dealEndDate >= endDate)
+						|| (dealStartDate >= startDate && dealEndDate <= endDate)
 					);
 				}
 				if(progressInRange && scheduleInRange){
