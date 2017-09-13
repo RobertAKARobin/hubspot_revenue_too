@@ -36,52 +36,13 @@ var help = {
 	}
 };
 
-var DEFAULT = {
-	probabilityLow: 50,
-	probabilityHigh: 75,
-	schedule: {
-		startMonth: (new Date().getMonth() + 1),
-		startYear: (new Date().getFullYear()),
-		numMonths: 3,
-	},
-	properties: {
-		createdate: 'integer',
-		dealname: 'string',
-		'probability_': 'integer',
-		amount: 'float', 
-		closedate: 'date',
-		startdate: 'date',
-		schedule: 'string'
-	},
-	timeZoneOffset: (5 * 60 * 60 * 1000)
-}
-
 var Data = {
-	loading: {
-		total: 0,
-		offset: 0,
-		doContinue: false
-	},
-	editor: {
-		doShow: false,
-		deal: null
-	},
+	loading: {},
+	editor: {},
 	highlight: [],
-	sort: {
-		property: '',
-		direction: ''
-	},
-	filter: {
-		probabilityLow: m.stream(help.query().probabilityLow || DEFAULT.probabilityLow),
-		probabilityHigh: m.stream(help.query().probabilityHigh || DEFAULT.probabilityHigh),
-		limitToSchedule: m.stream(false)
-	},
-	schedule: {
-		startYear: m.stream(help.query().startYear || DEFAULT.schedule.startYear),
-		startMonth: m.stream(help.query().startMonth || DEFAULT.schedule.startMonth),
-		numMonths: m.stream(help.query().numMonths || DEFAULT.schedule.numMonths),
-		columnNames: []
-	}
+	sort: {},
+	filter: {},
+	schedule: {}
 };
 
 var Deal = (function(){
@@ -89,6 +50,15 @@ var Deal = (function(){
 	var $Class = {
 		all: [],
 		allById: {},
+		properties: {
+			createdate: 'integer',
+			dealname: 'string',
+			'probability_': 'integer',
+			amount: 'float', 
+			closedate: 'date',
+			startdate: 'date',
+			schedule: 'string'
+		},
 		new: function(){
 			var deal = Object.create($Instance);
 			deal = $InstanceConstructor.apply(deal, arguments);
@@ -147,10 +117,10 @@ var Deal = (function(){
 		},
 		updateProperties: function(input){
 			var deal = this;
-			for(var propertyName in DEFAULT.properties){
+			for(var propertyName in Deal.properties){
 				var value = input.properties[propertyName];
 				value = (value instanceof Object ? value.value : value);
-				switch(DEFAULT.properties[propertyName]){
+				switch(Deal.properties[propertyName]){
 					case 'string':
 						deal[propertyName] = (value || '');
 						break;
@@ -165,10 +135,11 @@ var Deal = (function(){
 		},
 		updateDates: function(){
 			var deal = this;
+			var HSTimeZoneOffset = (5 * 60 * 60 * 1000);
 			deal.schedule = (deal.schedule || deal.amount.toString());
 			deal.dates = {};
-			deal.dates.close = new Date((deal.closedate || 0) + DEFAULT.timeZoneOffset);
-			deal.dates.start = new Date((deal.startdate || deal.closedate) + DEFAULT.timeZoneOffset);
+			deal.dates.close = new Date((deal.closedate || 0) + HSTimeZoneOffset);
+			deal.dates.start = new Date((deal.startdate || deal.closedate) + HSTimeZoneOffset);
 			deal.dates.start = new Date(deal.dates.start.getFullYear(), deal.dates.start.getMonth());
 			deal.updateAllocations();
 			deal.dates.end = new Date(
@@ -217,7 +188,7 @@ var DealsList = (function(){
 				data: {
 					limit: 250,
 					offset: (Data.loading.offset || 0),
-					properties: Object.keys(DEFAULT.properties).join(',')
+					properties: Object.keys(Deal.properties).join(',')
 				}
 			}).then(actions.parseResponse);
 		},
@@ -500,7 +471,7 @@ var DealsList = (function(){
 		controls: function(){
 			return [
 				m('p', [
-					m('span', (Data.loading.doContinue ? 'Loading ' + (Data.loading.total || '') + '...' : Data.loading.total + ' loaded in memory. ' + (Deal.all.length || 0) + ' match the current filter')),
+					m('span', (Data.loading.doContinue ? 'Loading ' + (Data.loading.total || '') + '...' : (Data.loading.total || 0) + ' loaded in memory. ' + (Deal.all.length || 0) + ' match the current filter')),
 					m('button', {
 						onclick: (Data.loading.doContinue ? events.stopLoading : events.loadDeals)
 					}, (Data.loading.doContinue ? 'Cancel' : 'Refresh'))
@@ -595,6 +566,16 @@ var DealsList = (function(){
 
 	return {
 		oninit: function(){
+			Data.filter = {
+				probabilityLow: m.stream(help.query().probabilityLow || 75),
+				probabilityHigh: m.stream(help.query().probabilityHigh || 99),
+				limitToSchedule: m.stream(false)
+			};
+			Data.schedule = {
+				startYear: m.stream(help.query().startYear || (new Date().getFullYear())),
+				startMonth: m.stream(help.query().startMonth || (new Date().getMonth() + 1)),
+				numMonths: m.stream(help.query().numMonths || 3),
+			};
 			actions.setScheduleRange();
 		},
 		view: function(){
