@@ -37,6 +37,7 @@ var help = {
 };
 
 var Data = {
+	deals: [],
 	loading: {},
 	editor: {},
 	highlight: [],
@@ -62,6 +63,7 @@ var Deal = (function(){
 		new: function(){
 			var deal = Object.create($Instance);
 			deal = $InstanceConstructor.apply(deal, arguments);
+			Deal.allById[deal.dealId] = deal;
 			return deal;
 		},
 		filter: function(callback){
@@ -174,52 +176,62 @@ var Deal = (function(){
 
 var DealsList = (function(){
 
-	var actions = {
-		loadDeals: function(){
-			Data.loading.total = 0;
-			Data.loading.offset = 0;
-			Data.loading.doContinue = true;
-			actions.loadNextPage();
-		},
-		loadNextPage: function(){
-			m.request({
-				url: '/deals',
-				method: 'GET',
-				data: {
-					limit: 250,
-					offset: (Data.loading.offset || 0),
-					properties: Object.keys(Deal.properties).join(',')
-				}
-			}).then(actions.parseResponse);
-		},
-		isDealDateInRange: function(deal){
-			var startDate = Data.schedule.startDate;
-			var endDate = Data.schedule.endDate;
-			var overlapsStartDate	= (deal.dates.start <= startDate && deal.dates.end >= startDate);
-			var overlapsEndDate		= (deal.dates.start <= endDate && deal.dates.end >= endDate);
-			var isInsideDates		= (deal.dates.start >= startDate && deal.dates.end <= endDate);
-			return (overlapsStartDate || overlapsEndDate || isInsideDates);
-		},
-		isDealProbabilityInRange: function(deal){
-			return (
-				deal['probability_'] >= Data.filter.probabilityLow
-				&& deal['probability_'] <= Data.filter.probabilityHigh
-			);
-		},
-		parseResponse: function(response){
-			if(response.success && Data.loading.doContinue){
-				for(var i = 0, l = response.deals.length; i < l; i++){
-					var input = response.deals[i];
-					Deal.allById[input.dealId] = Deal.new(input).updateProperties(input);
-				}
-				Data.loading.offset = response.offset;
-				Data.loading.total = (0 || Data.loading.total) + response.deals.length;
+	var action = {
+		filter: function(){
+			var probabilities = {
+				probabilityLow: Data.filter.probabilityLow(),
+				probabilityHigh: Data.filter.probabilityHigh()
 			}
-			if(response.success && response.hasMore && Data.loading.doContinue){
-				actions.loadNextPage();
+			help.query(probabilities);
+			Deal.filter(test.isDealProbabilityInRange);
+		},
+		hideEditor: function(){
+			Data.editor.deal = null;
+			Data.editor.doShow = false;
+		},
+		highlight: function(event){
+			var deal = this;
+			var highlightNum = Data.highlight.indexOf(deal.dealId);
+			if(highlightNum >= 0){
+				Data.highlight.splice(highlightNum, 1);
 			}else{
-				Data.loading.doContinue = false;
-				Deal.filter(actions.isDealProbabilityInRange);
+				Data.highlight.push(deal.dealId);
+			}
+		},
+		loadDeals: function(){
+			Data.loading = {
+				total: 0,
+				offset: 0,
+				doContinue: true
+			}
+			loadNextPage();
+
+			function loadNextPage(){
+				m.request({
+					url: '/deals',
+					method: 'GET',
+					data: {
+						limit: 250,
+						offset: (Data.loading.offset || 0),
+						properties: Object.keys(Deal.properties).join(',')
+					}
+				}).then(parseResponse);
+			}
+
+			function parseResponse(response){
+				if(response.success && Data.loading.doContinue){
+					for(var i = 0, l = response.deals.length; i < l; i++){
+						var input = response.deals[i];
+						Deal.new(input).updateProperties(input);
+					}
+					Data.loading.offset = response.offset;
+					Data.loading.total = (0 || Data.loading.total) + response.deals.length;
+				}
+				if(response.success && response.hasMore && Data.loading.doContinue){
+					loadNextPage();
+				}else{
+					action.stopLoading();
+				}
 			}
 		},
 		setScheduleRange: function(){
@@ -239,51 +251,13 @@ var DealsList = (function(){
 				Data.schedule.columnNames.push(counter.getTime());
 				counter.setMonth(counter.getMonth() + 1);
 			}
-		}
-	};
-
-	var events = {
-		loadDeals: function(event){
-			actions.loadDeals();
-		},
-		stopLoading: function(event){
-			Data.loading.doContinue = false;
-		},
-		sort: function(propertyName){
-			Data.sort.property = propertyName;
-			Data.sort.direction = (Data.sort.direction == 'asc' ? 'desc' : 'asc');
-			Deal.sort(Data.sort.property, Data.sort.direction);
-		},
-		filter: function(event){
-			var probabilities = {
-				probabilityLow: Data.filter.probabilityLow(),
-				probabilityHigh: Data.filter.probabilityHigh()
-			}
-			help.query(probabilities);
-			Deal.filter(actions.isDealProbabilityInRange);
-		},
-		setScheduleRange: function(event){
 			help.query({
 				startMonth: Data.schedule.startMonth(),
 				startYear: Data.schedule.startYear(),
 				numMonths: Data.schedule.numMonths()
 			});
-			actions.setScheduleRange();
 		},
-		hideEditor: function(event){
-			Data.editor.deal = null;
-			Data.editor.doShow = false;
-		},
-		highlight: function(event){
-			var deal = this;
-			var highlightNum = Data.highlight.indexOf(deal.dealId);
-			if(highlightNum >= 0){
-				Data.highlight.splice(highlightNum, 1);
-			}else{
-				Data.highlight.push(deal.dealId);
-			}
-		},
-		showEditor: function(event){
+		showEditor: function(){
 			var deal = this;
 			var editedDeal = Data.editor.deal = {};
 			for(var propertyName in deal){
@@ -292,6 +266,15 @@ var DealsList = (function(){
 			editedDeal.closedateChunks = views.dateToChunks(deal.dates.close);
 			editedDeal.startdateChunks = views.dateToChunks(deal.dates.start);
 			Data.editor.doShow = true;
+		},
+		sort: function(propertyName){
+			Data.sort.property = propertyName;
+			Data.sort.direction = (Data.sort.direction == 'asc' ? 'desc' : 'asc');
+			Deal.sort(Data.sort.property, Data.sort.direction);
+		},
+		stopLoading: function(){
+			Data.loading.doContinue = false;
+			Deal.filter(test.isDealProbabilityInRange);
 		},
 		updateDeal: function(event){
 			var inputDeal = this;
@@ -302,30 +285,64 @@ var DealsList = (function(){
 				method: 'PUT',
 				data: {
 					deal: inputDeal
-				}
+				},
+				background: true
 			}).then(function(response){
 				console.log(response)
 				if(response.success){
 					var input = response.data.deal;
 					Deal.allById[input.dealId].updateProperties({properties: input});
-					events.hideEditor();
+					action.hideEditor();
 				}else{
 					console.log('Womp');
 				}
 			});
 		},
-		updateLimitToScheduleFilter: function(event){
-			var doLimit = Data.filter.limitToSchedule(!!(event.target.checked));
+		updateLimitToScheduleFilter: function(doLimit){
+			var doLimit = Data.filter.limitToSchedule(doLimit);
 			if(doLimit){
 				Deal.filter(function(deal){
-					return (actions.isDealProbabilityInRange(deal) && actions.isDealDateInRange(deal));
+					return (test.isDealProbabilityInRange(deal) && test.isDealDateInRange(deal));
 				});
 			}else{
 				Deal.filter(function(deal){
-					return (actions.isDealProbabilityInRange(deal));
+					return (test.isDealProbabilityInRange(deal));
 				});
 			}
 			Deal.sort(Data.sort.property, Data.sort.direction);
+		}
+	}
+
+	var test = {
+		isDealDateInRange: function(deal){
+			var startDate = Data.schedule.startDate;
+			var endDate = Data.schedule.endDate;
+			var overlapsStartDate	= (deal.dates.start <= startDate && deal.dates.end >= startDate);
+			var overlapsEndDate		= (deal.dates.start <= endDate && deal.dates.end >= endDate);
+			var isInsideDates		= (deal.dates.start >= startDate && deal.dates.end <= endDate);
+			return (overlapsStartDate || overlapsEndDate || isInsideDates);
+		},
+		isDealProbabilityInRange: function(deal){
+			return (
+				deal['probability_'] >= Data.filter.probabilityLow
+				&& deal['probability_'] <= Data.filter.probabilityHigh
+			);
+		}
+	};
+
+	var events = {
+		loadDeals: function(event){
+			event.redraw = false;
+			action.loadDeals();
+		},
+		updateDeal: function(event){
+			var deal = this;
+			event.redraw = false;
+			action.updateDeal(deal);
+		},
+		updateLimitToScheduleFilter: function(event){
+			var doLimit = !!(event.target.checked);
+			action.updateLimitToScheduleFilter(doLimit);
 		}
 	};
 
@@ -435,7 +452,7 @@ var DealsList = (function(){
 			var nameRow = [
 				m('td', {
 					'highlight-toggle': true,
-					onclick: events.highlight.bind(deal)
+					onclick: action.highlight.bind(deal)
 				}, Deal.all.length - index),
 				m('th', [
 					m('a', {
@@ -452,7 +469,7 @@ var DealsList = (function(){
 			}
 			nameRow.push(m('td', [
 				m('button', {
-					onclick: events.showEditor.bind(deal)
+					onclick: action.showEditor.bind(deal)
 				}, 'Edit')
 			]));
 			return [
@@ -465,7 +482,7 @@ var DealsList = (function(){
 			return {
 				sortProperty: propertyName,
 				sorting: (propertyName == Data.sort.property ? Data.sort.direction : ''),
-				onclick: m.withAttr('sortProperty', events.sort),
+				onclick: m.withAttr('sortProperty', action.sort),
 			}
 		},
 		controls: function(){
@@ -473,7 +490,7 @@ var DealsList = (function(){
 				m('p', [
 					m('span', (Data.loading.doContinue ? 'Loading ' + (Data.loading.total || '') + '...' : (Data.loading.total || 0) + ' loaded in memory. ' + (Deal.all.length || 0) + ' match the current filter')),
 					m('button', {
-						onclick: (Data.loading.doContinue ? events.stopLoading : events.loadDeals)
+						onclick: (Data.loading.doContinue ? action.stopLoading : action.loadDeals)
 					}, (Data.loading.doContinue ? 'Cancel' : 'Refresh'))
 				]),
 				m('label', [
@@ -483,7 +500,7 @@ var DealsList = (function(){
 					views.dateInputs.month(Data.schedule.startMonth),
 					m('span', '/'),
 					views.dateInputs.year(Data.schedule.startYear),
-					m('button', {onclick: events.setScheduleRange}, 'Update')
+					m('button', {onclick: action.setScheduleRange}, 'Update')
 				]),
 				m('label', [
 					m('span', 'Show deals with a probability between '),
@@ -498,7 +515,7 @@ var DealsList = (function(){
 						min: 0,
 						max: 100
 					}),
-					m('button', {onclick: events.filter}, 'Filter')
+					m('button', {onclick: action.filter}, 'Filter')
 				]),
 				m('label', [
 					m('span', 'Show only deals that will be in progress during the specified months?'),
@@ -514,11 +531,11 @@ var DealsList = (function(){
 			var deal = (Data.editor.deal || {});
 			return m('div.editor', [
 				m('a.shadow', {
-					onclick:events.hideEditor
+					onclick: action.hideEditor
 				}, ''),
 				m('div', [
 					m('a.cancel', {
-						onclick: events.hideEditor
+						onclick: action.hideEditor
 					}, 'Cancel'),
 					m('label', [
 						m('span', 'Name'),
@@ -576,7 +593,7 @@ var DealsList = (function(){
 				startMonth: m.stream(help.query().startMonth || (new Date().getMonth() + 1)),
 				numMonths: m.stream(help.query().numMonths || 3),
 			};
-			actions.setScheduleRange();
+			action.setScheduleRange();
 		},
 		view: function(){
 			return [
