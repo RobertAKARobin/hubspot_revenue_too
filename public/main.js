@@ -87,6 +87,85 @@ var Data = {
 	}
 };
 
+var Deal = (function(){
+
+	var $Class = {
+		new: function(){
+			var deal = Object.create($Instance);
+			$Instance_Constructor.apply(deal, arguments);
+			return deal;
+		}
+	}
+
+	var $Instance_Constructor = function(input){
+		var deal = this;
+		deal.dealId = input.dealId;
+		deal.updateProperties(input);
+		return deal;
+	}
+
+	var $Instance = {
+		updateProperties: function(input){
+			var deal = this;
+			for(var propertyName in DEFAULT.properties){
+				var value = input.properties[propertyName];
+				value = (value instanceof Object ? value.value : value);
+				switch(DEFAULT.properties[propertyName]){
+					case 'string':
+						deal[propertyName] = (value || '');
+						break;
+					case 'float':
+						deal[propertyName] = (parseFloat(value) || 0);
+						break;
+					default:
+						deal[propertyName] = (parseInt(value) || 0);
+				}
+			}
+			deal.updateDates();
+			deal.updateAllocations();
+			return deal;
+		},
+		updateDates: function(){
+			var deal = this;
+			deal.schedule = (deal.schedule || deal.amount.toString());
+			deal.dates = {};
+			deal.dates.close = new Date((deal.closedate || 0) + DEFAULT.timeZoneOffset);
+			deal.dates.start = new Date((deal.startdate || deal.closedate) + DEFAULT.timeZoneOffset);
+			deal.dates.start = new Date(deal.dates.start.getFullYear(), deal.dates.start.getMonth());
+			deal.monthlyAllocations = deal.updateAllocations();
+			deal.dates.end = new Date(
+				deal.dates.start.getFullYear(),
+				deal.dates.start.getMonth() + Object.keys(deal.monthlyAllocations).length,
+				1, 0, 0, 0, -1
+			);
+			return deal;
+		},
+		updateAllocations: function(){
+			var deal = this;
+			var matchAllNumbers = /\$\d+\.?\d{0,2}|%\d+\.?\d{0,2}|\d+\.?\d{0,2}%|\d+\.?\d{0,2}/gm;
+			var matchNonNumber = /[^\d\.]/g;
+
+			var monthlyAllocations = (deal.schedule.match(matchAllNumbers) || []);
+			var startDate = new Date(deal.dates.start.getTime());
+			deal.monthlyAllocations = {};
+			for(var i = 0, l = monthlyAllocations.length; i < l; i++){
+				var monthlyAllocation = monthlyAllocations[i];
+				var numericValueForMonth = parseFloat(monthlyAllocation.replace(matchNonNumber, ''));
+				var dollarValueForMonth = numericValueForMonth;
+				if(/%/.test(monthlyAllocation)){
+					var dollarValueForMonth = (numericValueForMonth * (deal.amount / 100));
+				}
+				deal.monthlyAllocations[startDate.getTime()] = dollarValueForMonth;
+				startDate.setMonth(startDate.getMonth() + 1);
+			}
+			return deal;
+		}
+	}
+
+	return $Class;
+
+})();
+
 var DealsList = (function(){
 
 	var actions = {
@@ -113,11 +192,7 @@ var DealsList = (function(){
 			if(response.success && Data.loading.doContinue){
 				for(var i = 0, l = response.deals.length; i < l; i++){
 					var input = response.deals[i];
-					var deal = {
-						dealId: input.dealId
-					}
-					actions.enumerateDealProperties(deal, input);
-					Data.dealsById[input.dealId] = deal;
+					Data.dealsById[input.dealId] = Deal.new(input).updateProperties(input);
 				}
 				Data.loading.offset = response.offset;
 				Data.loading.total = (0 || Data.loading.total) + response.deals.length;
@@ -129,38 +204,6 @@ var DealsList = (function(){
 				actions.filterAndAppendDeals();
 				Data.loading.doContinue = false;
 			}
-		},
-		enumerateDealProperties: function(deal, input){
-			for(var propertyName in DEFAULT.properties){
-				var value = input.properties[propertyName];
-				value = (value instanceof Object ? value.value : value);
-				switch(DEFAULT.properties[propertyName]){
-					case 'string':
-						deal[propertyName] = (value || '');
-						break;
-					case 'float':
-						deal[propertyName] = (parseFloat(value) || 0);
-						break;
-					default:
-						deal[propertyName] = (parseInt(value) || 0);
-				}
-			}
-			deal.schedule = (deal.schedule || deal.amount.toString());
-			deal.dates = {};
-			deal.dates.close = new Date((deal.closedate || 0) + DEFAULT.timeZoneOffset);
-			deal.dates.start = new Date((deal.startdate || deal.closedate) + DEFAULT.timeZoneOffset);
-			deal.dates.start = new Date(deal.dates.start.getFullYear(), deal.dates.start.getMonth());
-			deal.monthlyAllocations = actions.calculateMonthlyAllocations(deal);
-			deal.dates.end = new Date(
-				deal.dates.start.getFullYear(),
-				deal.dates.start.getMonth() + Object.keys(deal.monthlyAllocations).length,
-				1,
-				0,
-				0,
-				0,
-				-1
-			);
-			return deal;
 		},
 		filterAndAppendDeals: function(){
 			var startDate = new Date(parseInt(Data.schedule.start_year()), parseInt(Data.schedule.start_month()) - 1);
@@ -204,26 +247,6 @@ var DealsList = (function(){
 					return 0;
 				}
 			});
-		},
-		calculateMonthlyAllocations: function(deal){
-			var matchAllNumbers = /\$\d+\.?\d{0,2}|%\d+\.?\d{0,2}|\d+\.?\d{0,2}%|\d+\.?\d{0,2}/gm;
-			var monthlyAllocations = (deal.schedule.match(matchAllNumbers) || []);
-			var output = {};
-			var startDate = new Date(deal.dates.start.getTime());
-
-			var matchNonNumber = /[^\d\.]/g;
-			for(var i = 0, l = monthlyAllocations.length; i < l; i++){
-				var monthlyAllocation = monthlyAllocations[i];
-				var numericValueForMonth = parseFloat(monthlyAllocation.replace(matchNonNumber, ''));
-				if(/%/.test(monthlyAllocation)){
-					var dollarValueForMonth = (numericValueForMonth * (deal.amount / 100));
-				}else{
-					var dollarValueForMonth = numericValueForMonth;
-				}
-				output[startDate.getTime()] = dollarValueForMonth;
-				startDate.setMonth(startDate.getMonth() + 1);
-			}
-			return output;
 		},
 		setScheduleRange: function(){
 			var startDate = new Date(
@@ -309,8 +332,7 @@ var DealsList = (function(){
 				console.log(response)
 				if(response.success){
 					var input = response.data.deal;
-					var target = Data.dealsById[input.dealId];
-					actions.enumerateDealProperties(target, {properties: input});
+					Data.dealsById[input.dealId].updateProperties({properties: input});
 					events.hideEditor();
 				}else{
 					console.log('Womp');
