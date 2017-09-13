@@ -239,9 +239,9 @@ button:hover{
 	flex-grow:1;
 	flex-shrink:1;
 }
-[highlight],
+[highlight] > *,
 [highlight-toggle]:hover{
-	background-color:#ff6;
+	background-color:#ff6 !important;
 }
 [highlight-toggle]{
 	cursor:pointer;
