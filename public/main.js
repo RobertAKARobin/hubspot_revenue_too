@@ -37,12 +37,12 @@ var help = {
 };
 
 var DEFAULT = {
-	probability_low: 50,
-	probability_high: 75,
+	probabilityLow: 50,
+	probabilityHigh: 75,
 	schedule: {
-		start_month: (new Date().getMonth() + 1),
-		start_year: (new Date().getFullYear()),
-		num_months: 3,
+		startMonth: (new Date().getMonth() + 1),
+		startYear: (new Date().getFullYear()),
+		numMonths: 3,
 	},
 	properties: {
 		createdate: 'integer',
@@ -66,45 +66,78 @@ var Data = {
 		doShow: false,
 		deal: null
 	},
-	deals: [],
-	dealsById: {},
 	highlight: [],
-	serverResponse: '',
 	sort: {
 		property: '',
 		direction: ''
 	},
 	filter: {
-		probability_low: m.stream(help.query().probability_low || DEFAULT.probability_low),
-		probability_high: m.stream(help.query().probability_high || DEFAULT.probability_high),
-		limit_to_schedule: m.stream(false)
+		probabilityLow: m.stream(help.query().probabilityLow || DEFAULT.probabilityLow),
+		probabilityHigh: m.stream(help.query().probabilityHigh || DEFAULT.probabilityHigh),
+		limitToSchedule: m.stream(false)
 	},
 	schedule: {
-		start_year: m.stream(help.query().start_year || DEFAULT.schedule.start_year),
-		start_month: m.stream(help.query().start_month || DEFAULT.schedule.start_month),
-		num_months: m.stream(help.query().num_months || DEFAULT.schedule.num_months),
-		column_names: []
+		startYear: m.stream(help.query().startYear || DEFAULT.schedule.startYear),
+		startMonth: m.stream(help.query().startMonth || DEFAULT.schedule.startMonth),
+		numMonths: m.stream(help.query().numMonths || DEFAULT.schedule.numMonths),
+		columnNames: []
 	}
 };
 
 var Deal = (function(){
 
 	var $Class = {
+		all: [],
+		allById: {},
 		new: function(){
 			var deal = Object.create($Instance);
-			$Instance_Constructor.apply(deal, arguments);
+			deal = $InstanceConstructor.apply(deal, arguments);
 			return deal;
+		},
+		filter: function(callback){
+			Deal.all = [];
+			Object.values(Deal.allById).forEach(function(deal){
+				if(callback(deal)){
+					Deal.all.push(deal);
+				}
+			});
+			return Deal.all;
+		},
+		sort: function(sortProperty, sortDirection){
+			return Deal.all.sort(function(dealA, dealB){
+				var valA = dealA.getSortableProperty(sortProperty);
+				var valB = dealB.getSortableProperty(sortProperty);
+				if(valA > valB){
+					return (sortDirection == 'asc' ? 1 : -1);
+				}else if(valA < valB){
+					return (sortDirection == 'asc' ? -1 : 1);
+				}else{
+					return 0;
+				}
+			});
 		}
 	}
 
-	var $Instance_Constructor = function(input){
+	var $InstanceConstructor = function(input){
 		var deal = this;
 		deal.dealId = input.dealId;
 		deal.updateProperties(input);
 		return deal;
 	}
 
+	var match = {
+		scheduleString: /\$\d+\.?\d{0,2}|%\d+\.?\d{0,2}|\d+\.?\d{0,2}%|\d+\.?\d{0,2}/gm,
+		nonAlphaNum: /[^a-zA-Z0-9]/g,
+		nonNum: /[^\d\.]/g
+	}
+
 	var $Instance = {
+		getSortableProperty: function(propertyName){
+			var deal = this;
+			var val = (help.getNestedProperty(deal, propertyName) || '').toString();
+			var valString = val.replace(match.nonAlphaNum, '').toLowerCase();
+			return (isNaN(valString) ? valString : parseFloat(val.replace(match.nonNum, '')) || '');
+		},
 		updateProperties: function(input){
 			var deal = this;
 			for(var propertyName in DEFAULT.properties){
@@ -121,9 +154,7 @@ var Deal = (function(){
 						deal[propertyName] = (parseInt(value) || 0);
 				}
 			}
-			deal.updateDates();
-			deal.updateAllocations();
-			return deal;
+			return deal.updateDates();
 		},
 		updateDates: function(){
 			var deal = this;
@@ -132,7 +163,7 @@ var Deal = (function(){
 			deal.dates.close = new Date((deal.closedate || 0) + DEFAULT.timeZoneOffset);
 			deal.dates.start = new Date((deal.startdate || deal.closedate) + DEFAULT.timeZoneOffset);
 			deal.dates.start = new Date(deal.dates.start.getFullYear(), deal.dates.start.getMonth());
-			deal.monthlyAllocations = deal.updateAllocations();
+			deal.updateAllocations();
 			deal.dates.end = new Date(
 				deal.dates.start.getFullYear(),
 				deal.dates.start.getMonth() + Object.keys(deal.monthlyAllocations).length,
@@ -142,18 +173,15 @@ var Deal = (function(){
 		},
 		updateAllocations: function(){
 			var deal = this;
-			var matchAllNumbers = /\$\d+\.?\d{0,2}|%\d+\.?\d{0,2}|\d+\.?\d{0,2}%|\d+\.?\d{0,2}/gm;
-			var matchNonNumber = /[^\d\.]/g;
-
-			var monthlyAllocations = (deal.schedule.match(matchAllNumbers) || []);
+			var monthlyAllocations = (deal.schedule.match(match.scheduleString) || []);
 			var startDate = new Date(deal.dates.start.getTime());
 			deal.monthlyAllocations = {};
 			for(var i = 0, l = monthlyAllocations.length; i < l; i++){
 				var monthlyAllocation = monthlyAllocations[i];
-				var numericValueForMonth = parseFloat(monthlyAllocation.replace(matchNonNumber, ''));
+				var numericValueForMonth = parseFloat(monthlyAllocation.replace(match.nonNum, ''));
 				var dollarValueForMonth = numericValueForMonth;
 				if(/%/.test(monthlyAllocation)){
-					var dollarValueForMonth = (numericValueForMonth * (deal.amount / 100));
+					dollarValueForMonth = (numericValueForMonth * (deal.amount / 100));
 				}
 				deal.monthlyAllocations[startDate.getTime()] = dollarValueForMonth;
 				startDate.setMonth(startDate.getMonth() + 1);
@@ -173,8 +201,6 @@ var DealsList = (function(){
 			Data.loading.total = 0;
 			Data.loading.offset = 0;
 			Data.loading.doContinue = true;
-			Data.deals = [];
-			Data.dealsById = {};
 			actions.loadNextPage();
 		},
 		loadNextPage: function(){
@@ -188,11 +214,25 @@ var DealsList = (function(){
 				}
 			}).then(actions.parseResponse);
 		},
+		isDealDateInRange: function(deal){
+			var startDate = Data.schedule.startDate;
+			var endDate = Data.schedule.endDate;
+			var overlapsStartDate	= (deal.dates.start <= startDate && deal.dates.end >= startDate);
+			var overlapsEndDate		= (deal.dates.start <= endDate && deal.dates.end >= endDate);
+			var isInsideDates		= (deal.dates.start >= startDate && deal.dates.end <= endDate);
+			return (overlapsStartDate || overlapsEndDate || isInsideDates);
+		},
+		isDealProbabilityInRange: function(deal){
+			return (
+				deal['probability_'] >= Data.filter.probabilityLow
+				&& deal['probability_'] <= Data.filter.probabilityHigh
+			);
+		},
 		parseResponse: function(response){
 			if(response.success && Data.loading.doContinue){
 				for(var i = 0, l = response.deals.length; i < l; i++){
 					var input = response.deals[i];
-					Data.dealsById[input.dealId] = Deal.new(input).updateProperties(input);
+					Deal.allById[input.dealId] = Deal.new(input).updateProperties(input);
 				}
 				Data.loading.offset = response.offset;
 				Data.loading.total = (0 || Data.loading.total) + response.deals.length;
@@ -200,70 +240,32 @@ var DealsList = (function(){
 			if(response.success && response.hasMore && Data.loading.doContinue){
 				actions.loadNextPage();
 			}else{
-				Data.serverResponse = response.message;
-				actions.filterAndAppendDeals();
 				Data.loading.doContinue = false;
+				Deal.filter(actions.isDealProbabilityInRange);
 			}
 		},
-		filterAndAppendDeals: function(){
-			var startDate = new Date(parseInt(Data.schedule.start_year()), parseInt(Data.schedule.start_month()) - 1);
-			var endDate = new Date(parseInt(startDate.getFullYear()), parseInt(startDate.getMonth()) + parseInt(Data.schedule.num_months()), 1, 0, 0, -1);
-			Data.deals = [];
-			Object.values(Data.dealsById).forEach(function(deal){
-				var progressInRange = (
-					deal['probability_'] >= parseInt(Data.filter.probability_low())
-					&& deal['probability_'] <= parseInt(Data.filter.probability_high())
-				);
-				var scheduleInRange = true;
-				if(Data.filter.limit_to_schedule()){
-					scheduleInRange = (
-						(deal.dates.start <= startDate && deal.dates.end >= startDate)
-						|| (deal.dates.start <= endDate && deal.dates.end >= endDate)
-						|| (deal.dates.start >= startDate && deal.dates.end <= endDate)
-					);
-				}
-				if(progressInRange && scheduleInRange){
-					Data.deals.push(deal);
-				}
-			});
-		},
-		sortDeals: function(sortProperty, sortDirection){
-			var matchNonAlphanumeric = /[^a-zA-Z0-9]/g;
-			var matchNumeric = /[^0-9\.]/g;
-			Data.sort.property = sortProperty;
-			Data.sort.direction = (sortDirection || (Data.sort.direction == 'asc' ? 'desc' : 'asc'));
-			Data.deals.sort(function(a, b){
-				var valA = (help.getNestedProperty(a, sortProperty) || '').toString();
-				var valB = (help.getNestedProperty(b, sortProperty) || '').toString();
-				var valAString = valA.replace(matchNonAlphanumeric, '').toLowerCase();
-				var valBString = valB.replace(matchNonAlphanumeric, '').toLowerCase();
-				valA = (isNaN(valAString) ? valAString : parseFloat(valA.replace(matchNumeric, '')) || '');
-				valB = (isNaN(valBString) ? valBString : parseFloat(valB.replace(matchNumeric, '')) || '');
-				if(valA > valB){
-					return (Data.sort.direction == 'asc' ? 1 : -1);
-				}else if(valA < valB){
-					return (Data.sort.direction == 'asc' ? -1 : 1);
-				}else{
-					return 0;
-				}
-			});
-		},
 		setScheduleRange: function(){
-			var startDate = new Date(
-				Data.schedule.start_year(),
-				Data.schedule.start_month() - 1
+			var numMonths = parseInt(Data.schedule.numMonths());
+			var startDate = Data.schedule.startDate = new Date(
+				parseInt(Data.schedule.startYear()),
+				parseInt(Data.schedule.startMonth()) - 1
 			);
-			Data.schedule.start_date = startDate.getTime();
-			Data.schedule.column_names = [];
-			for(var i = 0; i < Data.schedule.num_months; i += 1){
-				Data.schedule.column_names.push(startDate.getTime());
-				startDate.setMonth(startDate.getMonth() + 1);
+			var endDate = Data.schedule.endDate = new Date(
+				startDate.getFullYear(),
+				startDate.getMonth() + numMonths,
+				1, 0, 0, -1
+			);
+			var counter = new Date(startDate.getTime());
+			Data.schedule.columnNames = [];
+			for(var i = 0; i < numMonths; i += 1){
+				Data.schedule.columnNames.push(counter.getTime());
+				counter.setMonth(counter.getMonth() + 1);
 			}
 		},
 		getSumOfDeals: function(propertyName){
 			var result = 0;
-			for(var i = 0, l = Data.deals.length; i < l; i++){
-				result += (parseFloat(help.getNestedProperty(Data.deals[i], propertyName)) || 0);
+			for(var i = 0, l = Deal.all.length; i < l; i++){
+				result += (parseFloat(help.getNestedProperty(Deal.all[i], propertyName)) || 0);
 			}
 			return result;
 		}
@@ -277,23 +279,25 @@ var DealsList = (function(){
 			Data.loading.doContinue = false;
 		},
 		sort: function(propertyName){
-			actions.sortDeals(propertyName);
+			Data.sort.property = propertyName;
+			Data.sort.direction = (Data.sort.direction == 'asc' ? 'desc' : 'asc');
+			Deal.sort(Data.sort.property, Data.sort.direction);
 		},
 		filter: function(event){
-			help.query({
-				probability_low: Data.filter.probability_low,
-				probability_high: Data.filter.probability_high
-			});
-			actions.filterAndAppendDeals();
+			var probabilities = {
+				probabilityLow: Data.filter.probabilityLow(),
+				probabilityHigh: Data.filter.probabilityHigh()
+			}
+			help.query(probabilities);
+			Deal.filter(actions.isDealProbabilityInRange);
 		},
 		setScheduleRange: function(event){
 			help.query({
-				start_month: Data.schedule.start_month,
-				start_year: Data.schedule.start_year,
-				num_months: Data.schedule.num_months
+				startMonth: Data.schedule.startMonth(),
+				startYear: Data.schedule.startYear(),
+				numMonths: Data.schedule.numMonths()
 			});
 			actions.setScheduleRange();
-			actions.filterAndAppendDeals();
 		},
 		hideEditor: function(event){
 			Data.editor.deal = null;
@@ -314,14 +318,14 @@ var DealsList = (function(){
 			for(var propertyName in deal){
 				editedDeal[propertyName] = m.stream(deal[propertyName]);
 			}
-			editedDeal.closedate_chunks = views.dateToChunks(deal.dates.close);
-			editedDeal.startdate_chunks = views.dateToChunks(deal.dates.start);
+			editedDeal.closedateChunks = views.dateToChunks(deal.dates.close);
+			editedDeal.startdateChunks = views.dateToChunks(deal.dates.start);
 			Data.editor.doShow = true;
 		},
 		updateDeal: function(event){
 			var inputDeal = this;
-			inputDeal.closedate = views.dateFromChunks(inputDeal.closedate_chunks).getTime();
-			inputDeal.startdate = views.dateFromChunks(inputDeal.startdate_chunks).getTime();
+			inputDeal.closedate = views.dateFromChunks(inputDeal.closedateChunks).getTime();
+			inputDeal.startdate = views.dateFromChunks(inputDeal.startdateChunks).getTime();
 			m.request({
 				url: '/deals/' + inputDeal.dealId,
 				method: 'PUT',
@@ -332,7 +336,7 @@ var DealsList = (function(){
 				console.log(response)
 				if(response.success){
 					var input = response.data.deal;
-					Data.dealsById[input.dealId].updateProperties({properties: input});
+					Deal.allById[input.dealId].updateProperties({properties: input});
 					events.hideEditor();
 				}else{
 					console.log('Womp');
@@ -340,9 +344,17 @@ var DealsList = (function(){
 			});
 		},
 		updateLimitToScheduleFilter: function(event){
-			Data.filter.limit_to_schedule(!!(event.target.checked));
-			actions.filterAndAppendDeals();
-			actions.sortDeals(Data.sort.property, Data.sort.direction);
+			var doLimit = Data.filter.limitToSchedule(!!(event.target.checked));
+			if(doLimit){
+				Deal.filter(function(deal){
+					return (actions.isDealProbabilityInRange(deal) && actions.isDealDateInRange(deal));
+				});
+			}else{
+				Deal.filter(function(deal){
+					return (actions.isDealProbabilityInRange(deal));
+				});
+			}
+			Deal.sort(Data.sort.property, Data.sort.direction);
 		}
 	};
 
@@ -426,8 +438,8 @@ var DealsList = (function(){
 				m('th', views.sortable('amount'), 'Amount'),
 				m('th', views.sortable('closedate'), 'Close date')
 			];
-			for(var i = 0, l = Data.schedule.column_names.length; i < l; i += 1){
-				var colName = Data.schedule.column_names[i];
+			for(var i = 0, l = Data.schedule.columnNames.length; i < l; i += 1){
+				var colName = Data.schedule.columnNames[i];
 				row.push(m('th.date', views.sortable('monthlyAllocations.' + colName), views.date(colName)));
 			}
 			row.push(m('th'));
@@ -441,8 +453,8 @@ var DealsList = (function(){
 				m('th.number', views.dollars(actions.getSumOfDeals('amount'))),
 				m('th'),
 			];
-			for(var i = 0, l = Data.schedule.column_names.length; i < l; i += 1){
-				var colName = Data.schedule.column_names[i];
+			for(var i = 0, l = Data.schedule.columnNames.length; i < l; i += 1){
+				var colName = Data.schedule.columnNames[i];
 				row.push(m('th.number', views.dollars(actions.getSumOfDeals('monthlyAllocations.' + colName))));
 			}
 			row.push(m('th'));
@@ -453,18 +465,18 @@ var DealsList = (function(){
 				m('td', {
 					'highlight-toggle': true,
 					onclick: events.highlight.bind(deal)
-				}, Data.deals.length - index),
+				}, Deal.all.length - index),
 				m('th', [
 					m('a', {
 						href: 'https://app.hubspot.com/sales/211554/deal/' + deal.dealId
 					}, deal.dealname)
 				]),
-				m('td.number', deal.probability_),
+				m('td.number', deal['probability_']),
 				m('td.number', views.dollars(deal.amount)),
 				m('td.number', views.date(deal.closedate, 1)),
 			];
-			for(var i = 0, l = Data.schedule.column_names.length; i < l; i += 1){
-				var monthCost = (deal.monthlyAllocations[Data.schedule.column_names[i]] || 0);
+			for(var i = 0, l = Data.schedule.columnNames.length; i < l; i += 1){
+				var monthCost = (deal.monthlyAllocations[Data.schedule.columnNames[i]] || 0);
 				nameRow.push(m('td.number.revenue', (isNaN(monthCost) ? '' : views.dollars(monthCost))));
 			}
 			nameRow.push(m('td', [
@@ -480,37 +492,37 @@ var DealsList = (function(){
 		},
 		sortable: function(propertyName){
 			return {
-				sort_property: propertyName,
+				sortProperty: propertyName,
 				sorting: (propertyName == Data.sort.property ? Data.sort.direction : ''),
-				onclick: m.withAttr('sort_property', events.sort),
+				onclick: m.withAttr('sortProperty', events.sort),
 			}
 		},
 		controls: function(){
 			return [
 				m('p', [
-					m('span', (Data.loading.doContinue ? 'Loading ' + (Data.loading.total || '') + '...' : Data.loading.total + ' loaded in memory. ' + (Data.deals.length || 0) + ' match the current filter')),
+					m('span', (Data.loading.doContinue ? 'Loading ' + (Data.loading.total || '') + '...' : Data.loading.total + ' loaded in memory. ' + (Deal.all.length || 0) + ' match the current filter')),
 					m('button', {
 						onclick: (Data.loading.doContinue ? events.stopLoading : events.loadDeals)
 					}, (Data.loading.doContinue ? 'Cancel' : 'Refresh'))
 				]),
 				m('label', [
 					m('span', 'Show '),
-					views.dateInputs.month(Data.schedule.num_months),
+					views.dateInputs.month(Data.schedule.numMonths),
 					m('span', ' months starting '),
-					views.dateInputs.month(Data.schedule.start_month),
+					views.dateInputs.month(Data.schedule.startMonth),
 					m('span', '/'),
-					views.dateInputs.year(Data.schedule.start_year),
+					views.dateInputs.year(Data.schedule.startYear),
 					m('button', {onclick: events.setScheduleRange}, 'Update')
 				]),
 				m('label', [
 					m('span', 'Show deals with a probability between '),
-					views.input(Data.filter.probability_low, {
+					views.input(Data.filter.probabilityLow, {
 						type: 'number',
 						min: 0,
 						max: 100
 					}),
 					m('span', ' and '),
-					views.input(Data.filter.probability_high, {
+					views.input(Data.filter.probabilityHigh, {
 						type: 'number', 
 						min: 0,
 						max: 100
@@ -521,7 +533,7 @@ var DealsList = (function(){
 					m('span', 'Show only deals that will be in progress during the specified months?'),
 					m('input', {
 						type: 'checkbox',
-						value: Data.filter.limit_to_schedule(),
+						value: Data.filter.limitToSchedule(),
 						onchange: events.updateLimitToScheduleFilter
 					})
 				])
@@ -559,13 +571,13 @@ var DealsList = (function(){
 					]),
 					m('label.date', [
 						m('span', 'Close date'),
-						views.dateInputs.all(deal.closedate_chunks)
+						views.dateInputs.all(deal.closedateChunks)
 					]),
 					m('label.date', [
 						m('span', 'Start month'),
-						views.dateInputs.year(deal.startdate_chunks.year),
+						views.dateInputs.year(deal.startdateChunks.year),
 						m('span', ' / '),
-						views.dateInputs.month(deal.startdate_chunks.month)
+						views.dateInputs.month(deal.startdateChunks.month)
 					]),
 					m('label', [
 						m('span', 'Schedule'),
@@ -593,7 +605,7 @@ var DealsList = (function(){
 				m('table', [
 					views.headerRow(),
 					views.subheaderRow(),
-					Data.deals.map(views.bodyRow)
+					Deal.all.map(views.bodyRow)
 				])
 			]
 		}

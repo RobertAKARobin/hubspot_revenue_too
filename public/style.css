@@ -90,6 +90,7 @@ a:hover{
 }
 table{
 	width:100%;
+	min-width:800px;
 }
 table, th, td{
 	border-collapse:collapse;
