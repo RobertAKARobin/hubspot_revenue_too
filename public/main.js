@@ -115,6 +115,13 @@ var Deal = (function(){
 					return 0;
 				}
 			});
+		},
+		sum: function(propertyName){
+			var result = 0;
+			for(var i = 0, l = Deal.all.length; i < l; i++){
+				result += (parseFloat(help.getNestedProperty(Deal.all[i], propertyName)) || 0);
+			}
+			return result;
 		}
 	}
 
@@ -261,13 +268,6 @@ var DealsList = (function(){
 				Data.schedule.columnNames.push(counter.getTime());
 				counter.setMonth(counter.getMonth() + 1);
 			}
-		},
-		getSumOfDeals: function(propertyName){
-			var result = 0;
-			for(var i = 0, l = Deal.all.length; i < l; i++){
-				result += (parseFloat(help.getNestedProperty(Deal.all[i], propertyName)) || 0);
-			}
-			return result;
 		}
 	};
 
@@ -450,12 +450,12 @@ var DealsList = (function(){
 				m('th'),
 				m('th', 'TOTALS'),
 				m('th.number'),
-				m('th.number', views.dollars(actions.getSumOfDeals('amount'))),
+				m('th.number', views.dollars(Deal.sum('amount'))),
 				m('th'),
 			];
 			for(var i = 0, l = Data.schedule.columnNames.length; i < l; i += 1){
 				var colName = Data.schedule.columnNames[i];
-				row.push(m('th.number', views.dollars(actions.getSumOfDeals('monthlyAllocations.' + colName))));
+				row.push(m('th.number', views.dollars(Deal.sum('monthlyAllocations.' + colName))));
 			}
 			row.push(m('th'));
 			return m('tr.subheaders.inputs', row);
