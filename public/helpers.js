@@ -8,16 +8,6 @@ m.wrap = function(wrapperNode, wrapperAttributes, list){
 	}
 	return output;
 }
-m.input = function(object, property, attributes, options){
-	var attributes = (attributes || {});
-	var options = (options || {});
-	attributes.value = (object[property] || '');
-	attributes.oninput = function(event){
-		event.redraw = false;
-		object[property] = event.target.value;
-	}
-	return m((options.element || 'input'), attributes);
-}
 
 var _h = {
 	query: function(paramsObject){

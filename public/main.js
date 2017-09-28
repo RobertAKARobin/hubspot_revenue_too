@@ -177,96 +177,108 @@ var DealsList = (function(){
 		}
 	};
 
-	var dateField = {
-		year: {
-			type: 'number',
-			placeholder: 'YY',
-			min: 2000,
-			max: 2040
-		},
-		month: {
-			type: 'number',
-			placeholder: 'MM',
-			min: 1,
-			max: 12
-		},
-		day: {
-			type: 'number',
-			placeholder: 'DD',
-			min: 1,
-			max: 31
-		}
-	}
-
 	var views = {
+		year: function(value){
+			return m('input', {
+				value: value,
+				type: 'number',
+				placeholder: 'YY',
+				min: 2000,
+				max: 2040
+			});
+		},
+		month: function(value){
+			return m('input', {
+				value: value,
+				type: 'number',
+				placeholder: 'MM',
+				min: 1,
+				max: 12
+			})
+		},
+		day: function(value){
+			return m('input', {
+				value: value,
+				type: 'number',
+				placeholder: 'DD',
+				min: 1,
+				max: 31
+			})
+		},
+		probability: function(value){
+			return m('input', {
+				value: value,
+				type: 'number',
+				min: 0,
+				max: 100
+			})
+		},
 		sortable: function(propertyName){
 			return {
 				sortProperty: propertyName,
 				sorting: (propertyName == Data.sort.property ? Data.sort.direction : ''),
 				onclick: m.withAttr('sortProperty', action.sort)
 			}
-		},
+		}
+	}
+
+	var viewBlocks = {
 		headerRow: function(){
-			var row = [
+			return m('tr.colheaders', [
 				m('th'),
 				m('th', views.sortable('dealname'), 'Name'),
 				m('th', views.sortable('probability_'), 'Probability'),
 				m('th', views.sortable('amount'), 'Amount'),
-				m('th', views.sortable('closedate'), 'Close date')
-			];
-			for(var i = 0, l = Data.schedule.columnNames.length; i < l; i += 1){
-				var colName = Data.schedule.columnNames[i];
-				row.push(m('th.date', views.sortable('monthlyAllocations.' + colName), _h.date.string(colName)));
-			}
-			row.push(m('th'));
-			return m('tr.colheaders', row);
+				m('th', views.sortable('closedate'), 'Close date'),
+				Data.schedule.columnNames.map(function(colName){
+					return m('th.date', views.sortable('monthlyAllocations.' + colName), _h.date.string(colName))
+				}),
+				m('th')
+			]);
 		},
 		subheaderRow: function(){
-			var row = [
+			return m('tr.subheaders.inputs', [
 				m('th'),
 				m('th', 'TOTALS'),
 				m('th.number'),
 				m('th.number', _h.dollars(Deal.sum('amount'))),
 				m('th'),
-			];
-			for(var i = 0, l = Data.schedule.columnNames.length; i < l; i += 1){
-				var colName = Data.schedule.columnNames[i];
-				row.push(m('th.number', _h.dollars(Deal.sum('monthlyAllocations.' + colName))));
-			}
-			row.push(m('th'));
-			return m('tr.subheaders.inputs', row);
+				Data.schedule.columnNames.map(function(colName){
+					return m('th.number', _h.dollars(Deal.sum('monthlyAllocations.' + colName)));
+				}),
+				m('th')
+			]);
 		},
 		bodyRow: function(deal, index){
-			var nameRow = [
-				m('td', {
-					'highlight-toggle': true,
-					onclick: action.highlight.bind(deal)
-				}, Deal.all.length - index),
-				m('th', [
-					m('a', {
-						href: 'https://app.hubspot.com/sales/211554/deal/' + deal.dealId
-					}, deal.dealname)
-				]),
-				m('td.number', deal['probability_']),
-				m('td.number', _h.dollars(deal.amount)),
-				m('td.number', _h.date.string(deal.closedate, 1)),
-			];
-			for(var i = 0, l = Data.schedule.columnNames.length; i < l; i += 1){
-				var monthCost = (deal.monthlyAllocations[Data.schedule.columnNames[i]] || 0);
-				nameRow.push(m('td.number.revenue', (isNaN(monthCost) ? '' : _h.dollars(monthCost))));
-			}
-			nameRow.push(m('td', [
-				m('button', {
-					onclick: action.showEditor.bind(deal)
-				}, 'Edit')
-			]));
-			return [
-				m('tr.body', {
+			return m('tr.body', {
 					'highlight': (Data.highlight.indexOf(deal.dealId) >= 0)
-				}, nameRow)
-			];
+				}, [
+					m('td', {
+						'highlight-toggle': true,
+						onclick: action.highlight.bind(deal)
+					}, Deal.all.length - index),
+					m('th', [
+						m('a', {
+							href: 'https://app.hubspot.com/sales/211554/deal/' + deal.dealId
+						}, deal.dealname)
+					]),
+					m('td.number', deal['probability_']),
+					m('td.number', _h.dollars(deal.amount)),
+					m('td.number', _h.date.string(deal.closedate, 1)),
+					Data.schedule.columnNames.map(function(colName){
+						var monthCost = (deal.monthlyAllocations[colName] || 0)
+						return m('td.number.revenue', (isNaN(monthCost) ? '' : _h.dollars(monthCost)))
+					}),
+					m('td', [
+						m('button', {
+							onclick: action.showEditor.bind(deal)
+						}, 'Edit')
+					])
+			]);
 		},
 		controls: function(){
+			var schedule = {};
+			var probability = {};
 			return [
 				m('p', [
 					m('span', (Data.loading.doContinue ? 'Loading ' + (Data.loading.total || '') + '...' : (Data.loading.total || 0) + ' loaded in memory. ' + (Deal.all.length || 0) + ' match the current filter')),
@@ -276,26 +288,18 @@ var DealsList = (function(){
 				]),
 				m('label', [
 					m('span', 'Show '),
-					m.input(Data.schedule, 'numMonths', dateField.month),
+					(schedule.numMonths = views.month(Data.schedule.startMonth)),
 					m('span', ' months starting '),
-					m.input(Data.schedule, 'startMonth', dateField.month),
+					(schedule.startMonth = views.month(Data.schedule.startMonth)),
 					m('span', '/'),
-					m.input(Data.schedule, 'startYear', dateField.year),
+					(schedule.startYear = views.year(Data.schedule.startYear)),
 					m('button', {onclick: action.setScheduleRange}, 'Update')
 				]),
 				m('label', [
 					m('span', 'Show deals with a probability between '),
-					m.input(Data.filter, 'probabilityLow', {
-						type: 'number',
-						min: 0,
-						max: 100
-					}),
+					(probability.low = views.probability(Data.filter.probabilityLow)),
 					m('span', ' and '),
-					m.input(Data.filter, 'probabilityHigh', {
-						type: 'number', 
-						min: 0,
-						max: 100
-					}),
+					(probability.high = views.probability(Data.filter.probabilityHigh)),
 					m('button', {onclick: action.filter}, 'Filter')
 				]),
 				m('label', [
@@ -310,7 +314,7 @@ var DealsList = (function(){
 		},
 		editor: function(){
 			var deal = Data.editor.deal;
-			debugger
+			var newDeal = {};
 			return m('div.editor', [
 				m('a.shadow', {
 					onclick: action.hideEditor
@@ -321,45 +325,42 @@ var DealsList = (function(){
 					}, 'Cancel'),
 					m('label', [
 						m('span', 'Name'),
-						m.input(deal, 'dealname', {
+						(newDeal.dealname = m('input', {
+							value: deal.dealname,
 							placeholder: 'ACME Company - Mobile app'
-						})
+						}))
 					]),
 					m('label', [
 						m('span', 'Probability (%)'),
-						m.input(deal, 'probability_', {
-							type: 'number',
-							min: 0,
-							max: 100
-						})
+						(newDeal.probability_ = views.probability(deal.probability_))
 					]),
 					m('label', [
 						m('span', 'Amount ($)'),
-						m.input(deal, 'amount', {
+						(newDeal.amount = m('input', {
+							value: deal.amount,
 							type: 'number'
-						})
+						}))
 					]),
 					m('label.date', [
 						m('span', 'Close date'),
-						m.input(deal.closedateChunks, 'month', dateField.month),
+						(newDeal.closeMonth = views.month(deal.closedateChunks.month)),
 						m('span', '/'),
-						m.input(deal.closedateChunks, 'day', dateField.day),
+						(newDeal.closeDay = views.day(deal.closedateChunks.day)),
 						m('span', '/'),
-						m.input(deal.closedateChunks, 'year', dateField.year)
+						(newDeal.closeYear = views.year(deal.closedateChunks.year))
 					]),
 					m('label.date', [
 						m('span', 'Start month'),
-						m.input(deal.startdateChunks, 'year', dateField.year),
+						(newDeal.startMonth = views.month(deal.startdateChunks.month)),
 						m('span', ' / '),
-						m.input(deal.startdateChunks, 'month', dateField.month)
+						(newDeal.startYear = views.year(deal.startdateChunks.year)),
 					]),
 					m('label', [
 						m('span', 'Schedule'),
-						m.input(deal, 'schedule', {
+						(newDeal.schedule = m('textarea', {
+							value: deal.schedule,
 							placeholder: '30%\n30%\n$4000.23\n%30'
-						}, {
-							element: 'textarea'
-						})
+						}))
 					]),
 					m('button', {
 						onclick: events.updateDeal.bind(deal)
@@ -386,12 +387,12 @@ var DealsList = (function(){
 		view: function(){
 			return [
 				m('h1', 'Deals'),
-				views.controls(),
-				(Data.editor.doShow ? views.editor() : null),
+				viewBlocks.controls(),
+				(Data.editor.doShow ? viewBlocks.editor() : null),
 				m('table', [
-					views.headerRow(),
-					views.subheaderRow(),
-					Deal.all.map(views.bodyRow)
+					viewBlocks.headerRow(),
+					viewBlocks.subheaderRow(),
+					Deal.all.map(viewBlocks.bodyRow)
 				])
 			]
 		}
