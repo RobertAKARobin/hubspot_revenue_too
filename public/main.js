@@ -1,114 +1,5 @@
 'use strict';
 
-m.withAttr = function(attrName, callback, context, shouldRedraw) {
-	if(shouldRedraw == undefined) shouldRedraw = true;
-	return function(e) {
-		e.redraw = (shouldRedraw ? true : false);
-		callback.call(context || this, attrName in e.currentTarget ? e.currentTarget[attrName] : e.currentTarget.getAttribute(attrName))
-	}
-}
-
-var _h = {
-	query: function(paramsObject){
-		var query = m.parseQueryString((window.location.href.match(/\?.*?$/g) || [])[0]);
-		var newurl = window.location.origin + window.location.pathname;
-		if(paramsObject){
-			for(var key in paramsObject){
-				query[key] = paramsObject[key];
-			}
-			newurl += '?' + m.buildQueryString(query);
-			window.history.pushState({path: newurl}, '', newurl);
-		}
-		return query;
-	},
-	getNestedProperty: function(object, propertyString){
-		var propertyTree = propertyString.split('.');
-		var currentProperty = null;
-		for(var i = 0, l = propertyTree.length; i < l; i++){
-			currentProperty = object[propertyTree[i]];
-			if(currentProperty === undefined){
-				object = {};
-			}else{
-				object = currentProperty;
-			}
-		}
-		return currentProperty;	
-	},
-	input: function(targetStream, attrs, elementType){
-		attrs = (attrs || {});
-		attrs.value = targetStream;
-		attrs.oninput = m.withAttr('value', targetStream, null, 0);
-		return m((elementType || 'input'), attrs);
-	},
-	dollars: function(amount){
-		return '$' + amount.toLocaleString(undefined,  {minimumFractionDigits: 2, maximumFractionDigits: 2});
-	},
-	date: {
-		string: function(date, showDays){
-			if(!(date instanceof Date)){
-				date = new Date(parseInt(date) || 0);
-			}
-			var delim = '/';
-			var year = date.getFullYear();
-			var month = date.getMonth() + 1;
-			if(showDays){
-				return month + delim + date.getDate() + delim + year;
-			}else{
-				return month + delim + year;
-			}
-		},
-		toObject: function(date){
-			return {
-				year: m.stream(date.getFullYear()),
-				month: m.stream(date.getMonth() + 1),
-				date: m.stream(date.getDate())
-			}
-		},
-		fromObject: function(dateObject){
-			return (new Date(
-				dateObject.year,
-				dateObject.month - 1,
-				(dateObject.date || 1)
-			));
-		},
-		inputs: {
-			year: function(year){
-				return _h.input(year || (new Date()).getFullYear(), {
-					type: 'number',
-					placeholder: 'YY',
-					min: 2000,
-					max: 2040
-				});
-			},
-			month: function(month){
-				return _h.input(month || (new Date()).getMonth() + 1, {
-					type: 'number',
-					placeholder: 'MM',
-					min: 1,
-					max: 12
-				});
-			},
-			day: function(date){
-				return _h.input(date || (new Date()).getDate(), {
-					type: 'number',
-					placeholder: 'DD',
-					min: 1,
-					max: 31
-				});
-			},
-			all: function(dateObject){
-				return [
-					_h.date.inputs.month(dateObject.month),
-					m('span', ' / '),
-					_h.date.inputs.day(dateObject.date),
-					m('span', ' / '),
-					_h.date.inputs.year(dateObject.year)
-				];
-			}
-		}
-	}
-};
-
 var Data = {
 	deals: [],
 	loading: {},
@@ -119,141 +10,13 @@ var Data = {
 	schedule: {}
 };
 
-var Deal = (function(){
-
-	var $Class = {
-		all: [],
-		allById: {},
-		properties: {
-			createdate: 'integer',
-			dealname: 'string',
-			'probability_': 'integer',
-			amount: 'float', 
-			closedate: 'date',
-			startdate: 'date',
-			schedule: 'string'
-		},
-		new: function(){
-			var deal = Object.create($Instance);
-			deal = $InstanceConstructor.apply(deal, arguments);
-			Deal.allById[deal.dealId] = deal;
-			return deal;
-		},
-		filter: function(callback){
-			Deal.all = [];
-			Object.values(Deal.allById).forEach(function(deal){
-				if(callback(deal)){
-					Deal.all.push(deal);
-				}
-			});
-			return Deal.all;
-		},
-		sort: function(sortProperty, sortDirection){
-			return Deal.all.sort(function(dealA, dealB){
-				var valA = dealA.getSortableProperty(sortProperty);
-				var valB = dealB.getSortableProperty(sortProperty);
-				if(valA > valB){
-					return (sortDirection == 'asc' ? 1 : -1);
-				}else if(valA < valB){
-					return (sortDirection == 'asc' ? -1 : 1);
-				}else{
-					return 0;
-				}
-			});
-		},
-		sum: function(propertyName){
-			var result = 0;
-			for(var i = 0, l = Deal.all.length; i < l; i++){
-				result += (parseFloat(_h.getNestedProperty(Deal.all[i], propertyName)) || 0);
-			}
-			return result;
-		}
-	}
-
-	var $InstanceConstructor = function(input){
-		var deal = this;
-		deal.dealId = input.dealId;
-		deal.updateProperties(input);
-		return deal;
-	}
-
-	var match = {
-		scheduleString: /\$\d+\.?\d{0,2}|%\d+\.?\d{0,2}|\d+\.?\d{0,2}%|\d+\.?\d{0,2}/gm,
-		nonAlphaNum: /[^a-zA-Z0-9]/g,
-		nonNum: /[^\d\.]/g
-	}
-
-	var $Instance = {
-		getSortableProperty: function(propertyName){
-			var deal = this;
-			var val = (_h.getNestedProperty(deal, propertyName) || '').toString();
-			var valString = val.replace(match.nonAlphaNum, '').toLowerCase();
-			return (isNaN(valString) ? valString : parseFloat(val.replace(match.nonNum, '')) || '');
-		},
-		updateProperties: function(input){
-			var deal = this;
-			for(var propertyName in Deal.properties){
-				var value = input.properties[propertyName];
-				value = (value instanceof Object ? value.value : value);
-				switch(Deal.properties[propertyName]){
-					case 'string':
-						deal[propertyName] = (value || '');
-						break;
-					case 'float':
-						deal[propertyName] = (parseFloat(value) || 0);
-						break;
-					default:
-						deal[propertyName] = (parseInt(value) || 0);
-				}
-			}
-			return deal.updateDates();
-		},
-		updateDates: function(){
-			var deal = this;
-			var HSTimeZoneOffset = (5 * 60 * 60 * 1000);
-			deal.schedule = (deal.schedule || deal.amount.toString());
-			deal.dates = {};
-			deal.dates.close = new Date((deal.closedate || 0) + HSTimeZoneOffset);
-			deal.dates.start = new Date((deal.startdate || deal.closedate) + HSTimeZoneOffset);
-			deal.dates.start = new Date(deal.dates.start.getFullYear(), deal.dates.start.getMonth());
-			deal.updateAllocations();
-			deal.dates.end = new Date(
-				deal.dates.start.getFullYear(),
-				deal.dates.start.getMonth() + Object.keys(deal.monthlyAllocations).length,
-				1, 0, 0, 0, -1
-			);
-			return deal;
-		},
-		updateAllocations: function(){
-			var deal = this;
-			var monthlyAllocations = (deal.schedule.match(match.scheduleString) || []);
-			var startDate = new Date(deal.dates.start.getTime());
-			deal.monthlyAllocations = {};
-			for(var i = 0, l = monthlyAllocations.length; i < l; i++){
-				var monthlyAllocation = monthlyAllocations[i];
-				var numericValueForMonth = parseFloat(monthlyAllocation.replace(match.nonNum, ''));
-				var dollarValueForMonth = numericValueForMonth;
-				if(/%/.test(monthlyAllocation)){
-					dollarValueForMonth = (numericValueForMonth * (deal.amount / 100));
-				}
-				deal.monthlyAllocations[startDate.getTime()] = dollarValueForMonth;
-				startDate.setMonth(startDate.getMonth() + 1);
-			}
-			return deal;
-		}
-	}
-
-	return $Class;
-
-})();
-
 var DealsList = (function(){
 
 	var action = {
 		filter: function(){
 			var probabilities = {
-				probabilityLow: Data.filter.probabilityLow(),
-				probabilityHigh: Data.filter.probabilityHigh()
+				probabilityLow: Data.filter.probabilityLow,
+				probabilityHigh: Data.filter.probabilityHigh
 			}
 			_h.query(probabilities);
 			Deal.filter(test.isDealProbabilityInRange);
@@ -308,10 +71,10 @@ var DealsList = (function(){
 			}
 		},
 		setScheduleRange: function(){
-			var numMonths = parseInt(Data.schedule.numMonths());
+			var numMonths = parseInt(Data.schedule.numMonths);
 			var startDate = Data.schedule.startDate = new Date(
-				parseInt(Data.schedule.startYear()),
-				parseInt(Data.schedule.startMonth()) - 1
+				parseInt(Data.schedule.startYear),
+				parseInt(Data.schedule.startMonth) - 1
 			);
 			var endDate = Data.schedule.endDate = new Date(
 				startDate.getFullYear(),
@@ -325,17 +88,14 @@ var DealsList = (function(){
 				counter.setMonth(counter.getMonth() + 1);
 			}
 			_h.query({
-				startMonth: Data.schedule.startMonth(),
-				startYear: Data.schedule.startYear(),
-				numMonths: Data.schedule.numMonths()
+				startMonth: Data.schedule.startMonth,
+				startYear: Data.schedule.startYear,
+				numMonths: Data.schedule.numMonths
 			});
 		},
 		showEditor: function(){
 			var deal = this;
-			var editedDeal = Data.editor.deal = {};
-			for(var propertyName in deal){
-				editedDeal[propertyName] = m.stream(deal[propertyName]);
-			}
+			var editedDeal = Data.editor.deal = JSON.parse(JSON.stringify(deal));
 			editedDeal.closedateChunks = _h.date.toObject(deal.dates.close);
 			editedDeal.startdateChunks = _h.date.toObject(deal.dates.start);
 			Data.editor.doShow = true;
@@ -370,7 +130,7 @@ var DealsList = (function(){
 			});
 		},
 		updateLimitToScheduleFilter: function(doLimit){
-			var doLimit = Data.filter.limitToSchedule(doLimit);
+			Data.filter.limitToSchedule = doLimit;
 			if(doLimit){
 				Deal.filter(function(deal){
 					return (test.isDealProbabilityInRange(deal) && test.isDealDateInRange(deal));
@@ -417,12 +177,33 @@ var DealsList = (function(){
 		}
 	};
 
+	var dateField = {
+		year: {
+			type: 'number',
+			placeholder: 'YY',
+			min: 2000,
+			max: 2040
+		},
+		month: {
+			type: 'number',
+			placeholder: 'MM',
+			min: 1,
+			max: 12
+		},
+		day: {
+			type: 'number',
+			placeholder: 'DD',
+			min: 1,
+			max: 31
+		}
+	}
+
 	var views = {
 		sortable: function(propertyName){
 			return {
 				sortProperty: propertyName,
 				sorting: (propertyName == Data.sort.property ? Data.sort.direction : ''),
-				onclick: m.withAttr('sortProperty', action.sort),
+				onclick: m.withAttr('sortProperty', action.sort)
 			}
 		},
 		headerRow: function(){
@@ -495,22 +276,22 @@ var DealsList = (function(){
 				]),
 				m('label', [
 					m('span', 'Show '),
-					_h.date.inputs.month(Data.schedule.numMonths),
+					m.input(Data.schedule, 'numMonths', dateField.month),
 					m('span', ' months starting '),
-					_h.date.inputs.month(Data.schedule.startMonth),
+					m.input(Data.schedule, 'startMonth', dateField.month),
 					m('span', '/'),
-					_h.date.inputs.year(Data.schedule.startYear),
+					m.input(Data.schedule, 'startYear', dateField.year),
 					m('button', {onclick: action.setScheduleRange}, 'Update')
 				]),
 				m('label', [
 					m('span', 'Show deals with a probability between '),
-					_h.input(Data.filter.probabilityLow, {
+					m.input(Data.filter, 'probabilityLow', {
 						type: 'number',
 						min: 0,
 						max: 100
 					}),
 					m('span', ' and '),
-					_h.input(Data.filter.probabilityHigh, {
+					m.input(Data.filter, 'probabilityHigh', {
 						type: 'number', 
 						min: 0,
 						max: 100
@@ -521,14 +302,15 @@ var DealsList = (function(){
 					m('span', 'Show only deals that will be in progress during the specified months?'),
 					m('input', {
 						type: 'checkbox',
-						value: Data.filter.limitToSchedule(),
+						value: Data.filter.limitToSchedule,
 						onchange: events.updateLimitToScheduleFilter
 					})
 				])
 			];
 		},
 		editor: function(){
-			var deal = (Data.editor.deal || {});
+			var deal = Data.editor.deal;
+			debugger
 			return m('div.editor', [
 				m('a.shadow', {
 					onclick: action.hideEditor
@@ -539,13 +321,13 @@ var DealsList = (function(){
 					}, 'Cancel'),
 					m('label', [
 						m('span', 'Name'),
-						_h.input(deal.dealname, {
+						m.input(deal, 'dealname', {
 							placeholder: 'ACME Company - Mobile app'
 						})
 					]),
 					m('label', [
 						m('span', 'Probability (%)'),
-						_h.input(deal['probability_'], {
+						m.input(deal, 'probability_', {
 							type: 'number',
 							min: 0,
 							max: 100
@@ -553,25 +335,31 @@ var DealsList = (function(){
 					]),
 					m('label', [
 						m('span', 'Amount ($)'),
-						_h.input(deal.amount, {
+						m.input(deal, 'amount', {
 							type: 'number'
 						})
 					]),
 					m('label.date', [
 						m('span', 'Close date'),
-						_h.date.inputs.all(deal.closedateChunks)
+						m.input(deal.closedateChunks, 'month', dateField.month),
+						m('span', '/'),
+						m.input(deal.closedateChunks, 'day', dateField.day),
+						m('span', '/'),
+						m.input(deal.closedateChunks, 'year', dateField.year)
 					]),
 					m('label.date', [
 						m('span', 'Start month'),
-						_h.date.inputs.year(deal.startdateChunks.year),
+						m.input(deal.startdateChunks, 'year', dateField.year),
 						m('span', ' / '),
-						_h.date.inputs.month(deal.startdateChunks.month)
+						m.input(deal.startdateChunks, 'month', dateField.month)
 					]),
 					m('label', [
 						m('span', 'Schedule'),
-						_h.input(deal.schedule, {
+						m.input(deal, 'schedule', {
 							placeholder: '30%\n30%\n$4000.23\n%30'
-						}, 'textarea')
+						}, {
+							element: 'textarea'
+						})
 					]),
 					m('button', {
 						onclick: events.updateDeal.bind(deal)
@@ -584,14 +372,14 @@ var DealsList = (function(){
 	return {
 		oninit: function(){
 			Data.filter = {
-				probabilityLow: m.stream(_h.query().probabilityLow || 75),
-				probabilityHigh: m.stream(_h.query().probabilityHigh || 99),
-				limitToSchedule: m.stream(false)
+				probabilityLow: (_h.query().probabilityLow || 75),
+				probabilityHigh: (_h.query().probabilityHigh || 99),
+				limitToSchedule: false
 			};
 			Data.schedule = {
-				startYear: m.stream(_h.query().startYear || (new Date().getFullYear())),
-				startMonth: m.stream(_h.query().startMonth || (new Date().getMonth() + 1)),
-				numMonths: m.stream(_h.query().numMonths || 3),
+				startYear: (_h.query().startYear || (new Date().getFullYear())),
+				startMonth: (_h.query().startMonth || (new Date().getMonth() + 1)),
+				numMonths: (_h.query().numMonths || 3),
 			};
 			action.setScheduleRange();
 		},
