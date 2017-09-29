@@ -5,6 +5,7 @@ var Deal = (function(){
 	var $Class = {
 		all: [],
 		allById: {},
+		allFiltered: [],
 		properties: {
 			createdate: 'integer',
 			dealname: 'string',
@@ -17,26 +18,27 @@ var Deal = (function(){
 		new: function(){
 			var deal = Object.create($Instance);
 			deal = $InstanceConstructor.apply(deal, arguments);
+			Deal.all.push(deal);
 			Deal.allById[deal.dealId] = deal;
 			return deal;
 		},
 		filter: function(callback){
-			Deal.all = [];
-			Object.values(Deal.allById).forEach(function(deal){
+			Deal.allFiltered = [];
+			Deal.all.forEach(function(deal){
 				if(callback(deal)){
-					Deal.all.push(deal);
+					Deal.allFiltered.push(deal);
 				}
 			});
-			return Deal.all;
+			return Deal.allFiltered;
 		},
-		sort: function(sortProperty, sortDirection){
-			return Deal.all.sort(function(dealA, dealB){
-				var valA = dealA.getSortableProperty(sortProperty);
-				var valB = dealB.getSortableProperty(sortProperty);
+		sort: function(sortProperties){
+			return Deal.allFiltered.sort(function(dealA, dealB){
+				var valA = dealA.getSortableProperty(sortProperties.propertyName);
+				var valB = dealB.getSortableProperty(sortProperties.propertyName);
 				if(valA > valB){
-					return (sortDirection == 'asc' ? 1 : -1);
+					return (sortProperties.direction == 'asc' ? 1 : -1);
 				}else if(valA < valB){
-					return (sortDirection == 'asc' ? -1 : 1);
+					return (sortProperties.direction == 'asc' ? -1 : 1);
 				}else{
 					return 0;
 				}
@@ -44,8 +46,8 @@ var Deal = (function(){
 		},
 		sum: function(propertyName){
 			var result = 0;
-			for(var i = 0, l = Deal.all.length; i < l; i++){
-				result += (parseFloat(Deal.all[i].getNestedProperty(propertyName)) || 0);
+			for(var i = 0, l = Deal.allFiltered.length; i < l; i++){
+				result += (parseFloat(Deal.allFiltered[i].getNestedProperty(propertyName)) || 0);
 			}
 			return result;
 		}
@@ -93,13 +95,13 @@ var Deal = (function(){
 			var isInsideDates		= (deal.dates.start >= startDate && deal.dates.end <= endDate);
 			return (overlapsStartDate || overlapsEndDate || isInsideDates);
 		},
-		isProbabilityInRange: function(probabilities){
+		isProbabilityInRange: function(test){
 			var deal = this;
 			var probability = deal['probability_'];
 			if(isNaN(probability)){
 				return false;
 			}else{
-				return (probability >= probabilities.low && probability <= probabilities.high);
+				return (probability >= test.probabilityLow && probability <= test.probabilityHigh);
 			}
 		},
 		updateProperties: function(input){
