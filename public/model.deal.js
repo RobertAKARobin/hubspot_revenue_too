@@ -15,6 +15,11 @@ var Deal = (function(){
 			startdate: 'date',
 			schedule: 'string'
 		},
+		clear: function(){
+			Deal.all = [];
+			Deal.allById = {};
+			Deal.allFiltered = [];
+		},
 		new: function(){
 			var deal = Object.create($Instance);
 			deal = $InstanceConstructor.apply(deal, arguments);
@@ -97,7 +102,7 @@ var Deal = (function(){
 		},
 		isProbabilityInRange: function(test){
 			var deal = this;
-			var probability = deal['probability_'];
+			var probability = deal.probability_;
 			if(isNaN(probability)){
 				return false;
 			}else{

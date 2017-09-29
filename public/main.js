@@ -16,6 +16,7 @@ var DealsList = (function(){
 		limitToSchedule: false,
 		highlights: [],
 		editStatus: {},
+		updateStatus: {},
 		loadStatus: {}
 	}
 
@@ -25,6 +26,7 @@ var DealsList = (function(){
 				offset: 0,
 				doContinue: true
 			}
+			Deal.clear();
 			loadNextPage();
 
 			function loadNextPage(){
@@ -90,6 +92,27 @@ var DealsList = (function(){
 			}
 			Deal.sort(control.sort);
 		},
+		showInEditor: function(deal){
+			var closedate = deal.dates.close.toObject();
+			var startdate = deal.dates.start.toObject();
+			control.editStatus.deal = {
+				dealId: deal.dealId,
+				dealname: m.stream(deal.dealname),
+				probability: m.stream(deal.probability_),
+				amount: m.stream(deal.amount),
+				closedate: {
+					month: m.stream(closedate.month),
+					day: m.stream(closedate.day),
+					year: m.stream(closedate.year)
+				},
+				startdate: {
+					month: m.stream(startdate.month),
+					year: m.stream(startdate.year)
+				},
+				schedule: m.stream(deal.schedule)
+			}
+			control.editStatus.doShow = true;
+		},
 		stopLoading: function(){
 			control.loadStatus.doContinue = false;
 			Deal.filter(function(deal){
@@ -97,20 +120,26 @@ var DealsList = (function(){
 			});
 		},
 		updateDeal: function(deal){
-			deal.closedate = Date.fromObject(deal.closedateChunks).getTime();
-			deal.startdate = Date.fromObject(deal.startdateChunks).getTime();
+			var input = JSON.parse(JSON.stringify(deal));
+			input.closedate = Date.fromObject(deal.closedate).getTime();
+			input.startdate = Date.fromObject(deal.startdate).getTime();
+			control.updateStatus.inProgress = true;
+			control.updateStatus.message = null;
 			m.request({
 				url: '/deals/' + deal.dealId,
 				method: 'PUT',
 				data: {
-					deal: deal
+					deal: input
 				}
 			}).then(function(response){
 				console.log(response)
 				if(response.success){
 					var input = response.data.deal;
+					control.updateStatus.message = 'Updated successfully';
+					control.updateStatus.inProgress = false;
 					Deal.allById[input.dealId].updateProperties({properties: input});
 				}else{
+					control.updateStatus.message = 'Update failed';
 					console.log('Womp');
 				}
 			});
@@ -148,14 +177,11 @@ var DealsList = (function(){
 		},
 		showEditor: function(event){
 			var deal = this;
-			var editedDeal = control.editStatus.deal = JSON.parse(JSON.stringify(deal));
-			editedDeal.closedateChunks = deal.dates.close.toObject();
-			editedDeal.startdateChunks = deal.dates.start.toObject();
-			control.editStatus.doShow = true;
+			control.updateStatus.message = null;
+			action.showInEditor(deal);
 		},
 		updateDeal: function(event){
 			var deal = this;
-			event.redraw = false;
 			action.updateDeal(deal);
 		}
 	};
@@ -193,6 +219,13 @@ var DealsList = (function(){
 						placeholder: '%%',
 						min: 0,
 						max: 100
+					}
+					break;
+				case 'dollars':
+					var attr = {
+						type: 'number',
+						placeholder: '$.$$',
+						step: '0.01'
 					}
 					break;
 				default:
@@ -254,7 +287,7 @@ var DealsList = (function(){
 				m('th', [
 					m('a[href=https://app.hubspot.com/sales/211554/deal/' + deal.dealId + ']', deal.dealname)
 				]),
-				m('td.number', deal['probability_']),
+				m('td.number', deal.probability_),
 				m('td.number', deal.amount.toDollars()),
 				m('td.number', deal.closedate.toPrettyString(true)),
 				control.schedule.columnNames.map(function(colName){
@@ -270,12 +303,12 @@ var DealsList = (function(){
 			return [
 				m('p', [
 					control.loadStatus.doContinue ? [
-							m('span', 'Loading ' + (Deal.all.length || '') + '...'),
-							m('button', {onclick: action.stopLoading}, 'Cancel')
-						] : [
-							m('span', Deal.all.length + ' loaded in memory. ' + (Deal.allFiltered.length || 0) + ' match the current filters.'),
-							m('button', {onclick: action.loadDeals}, 'Refresh')
-						]
+						m('span', 'Loading ' + (Deal.all.length || '') + '...'),
+						m('button', {onclick: action.stopLoading}, 'Cancel')
+					] : [
+						m('span', Deal.all.length + ' loaded in memory. ' + (Deal.allFiltered.length || 0) + ' match the current filters.'),
+						m('button', {onclick: action.loadDeals}, 'Refresh')
+					]
 				]),
 				m('label', [
 					m('span', 'Show '),
@@ -303,50 +336,55 @@ var DealsList = (function(){
 				])
 			];
 		},
-		editor: function(){
-			var deal = control.editStatus.deal;
-			var newDeal = {};
+		editor: function(deal){
 			return m('div.editor', [
 				m('a.shadow', {onclick: events.hideEditor}, ''),
 				m('div', [
 					m('a.cancel', {onclick: events.hideEditor}, 'Cancel'),
 					m('label', [
 						m('span', 'Name'),
-						(newDeal.dealname = m('input', {
-							value: deal.dealname,
+						m('input', views.input('text', deal.dealname).merge({
 							placeholder: 'ACME Company - Mobile app'
 						}))
 					]),
 					m('label', [
 						m('span', 'Probability (%)'),
-						(newDeal.probability_ = views.probability(deal.probability_))
+						m('input', views.input('percent', deal.probability))
 					]),
 					m('label', [
 						m('span', 'Amount ($)'),
-						(newDeal.amount = m('input', {value: deal.amount}))
+						m('input', views.input('dollars', deal.amount))
 					]),
 					m('label.date', [
 						m('span', 'Close date'),
-						(newDeal.closeMonth = views.month(deal.closedateChunks.month)),
+						m('input', views.input('month', deal.closedate.month)),
 						m('span', '/'),
-						(newDeal.closeDay = views.day(deal.closedateChunks.day)),
+						m('input', views.input('day', deal.closedate.day)),
 						m('span', '/'),
-						(newDeal.closeYear = views.year(deal.closedateChunks.year))
+						m('input', views.input('year', deal.closedate.year))
 					]),
 					m('label.date', [
 						m('span', 'Start month'),
-						(newDeal.startMonth = views.month(deal.startdateChunks.month)),
+						m('input', views.input('month', deal.startdate.month)),
 						m('span', ' / '),
-						(newDeal.startYear = views.year(deal.startdateChunks.year)),
+						m('input', views.input('year', deal.startdate.year))
 					]),
 					m('label', [
 						m('span', 'Schedule'),
-						(newDeal.schedule = m('textarea', {
-							value: deal.schedule,
+						m('textarea', views.input('text', deal.schedule).merge({
 							placeholder: '30%\n30%\n$4000.23\n%30'
 						}))
 					]),
-					m('button', {onclick: events.updateDeal.bind(deal)}, 'Update')
+					control.updateStatus.inProgress ? [
+						m('button[disabled]', 'Updating...')
+					] : [
+						m('button', {onclick: events.updateDeal.bind(deal)}, 'Update'),
+						control.updateStatus.message ? [
+							m('p', control.updateStatus.message)
+						] : [
+							null
+						]
+					]
 				])
 			]);
 		}
@@ -360,7 +398,7 @@ var DealsList = (function(){
 			return [
 				m('h1', 'Deals'),
 				viewBlocks.controls(),
-				(control.editStatus.doShow ? viewBlocks.editor() : null),
+				(control.editStatus.doShow ? viewBlocks.editor(control.editStatus.deal) : null),
 				m('table', [
 					viewBlocks.headerRow(),
 					viewBlocks.subheaderRow(),
