@@ -214,7 +214,7 @@ var DealsList = (function(){
 		sortable: function(propertyName){
 			return {
 				sortProperty: propertyName,
-				sorting: (propertyName == control.sort.property ? control.sort.direction : ''),
+				sorting: (propertyName == control.sort.propertyName ? control.sort.direction : ''),
 				onclick: m.withAttr('sortProperty', action.sort)
 			}
 		}
