@@ -240,7 +240,7 @@ button:hover{
 	flex-grow:1;
 	flex-shrink:1;
 }
-[highlight] > *,
+[highlight=true] > *,
 [highlight-toggle]:hover{
 	background-color:#ff6 !important;
 }

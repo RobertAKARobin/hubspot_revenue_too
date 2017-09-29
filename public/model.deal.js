@@ -45,7 +45,7 @@ var Deal = (function(){
 		sum: function(propertyName){
 			var result = 0;
 			for(var i = 0, l = Deal.all.length; i < l; i++){
-				result += (parseFloat(_h.getNestedProperty(Deal.all[i], propertyName)) || 0);
+				result += (parseFloat(Deal.all[i].getNestedProperty(propertyName)) || 0);
 			}
 			return result;
 		}
@@ -53,6 +53,7 @@ var Deal = (function(){
 
 	var $InstanceConstructor = function(input){
 		var deal = this;
+		deal.raw = input;
 		deal.dealId = input.dealId;
 		deal.updateProperties(input);
 		return deal;
@@ -65,11 +66,41 @@ var Deal = (function(){
 	}
 
 	var $Instance = {
+		getNestedProperty: function(propertyString){
+			var object = this;
+			var propertyTree = propertyString.split('.');
+			var currentProperty = null;
+			for(var i = 0, l = propertyTree.length; i < l; i++){
+				currentProperty = object[propertyTree[i]];
+				if(currentProperty === undefined){
+					object = {};
+				}else{
+					object = currentProperty;
+				}
+			}
+			return currentProperty;	
+		},
 		getSortableProperty: function(propertyName){
 			var deal = this;
-			var val = (_h.getNestedProperty(deal, propertyName) || '').toString();
+			var val = (deal.getNestedProperty(propertyName) || '').toString();
 			var valString = val.replace(match.nonAlphaNum, '').toLowerCase();
 			return (isNaN(valString) ? valString : parseFloat(val.replace(match.nonNum, '')) || '');
+		},
+		isDateInRange: function(startDate, endDate){
+			var deal = this;
+			var overlapsStartDate	= (deal.dates.start <= startDate && deal.dates.end >= startDate);
+			var overlapsEndDate		= (deal.dates.start <= endDate && deal.dates.end >= endDate);
+			var isInsideDates		= (deal.dates.start >= startDate && deal.dates.end <= endDate);
+			return (overlapsStartDate || overlapsEndDate || isInsideDates);
+		},
+		isProbabilityInRange: function(probabilities){
+			var deal = this;
+			var probability = deal['probability_'];
+			if(isNaN(probability)){
+				return false;
+			}else{
+				return (probability >= probabilities.low && probability <= probabilities.high);
+			}
 		},
 		updateProperties: function(input){
 			var deal = this;
@@ -82,6 +113,10 @@ var Deal = (function(){
 						break;
 					case 'float':
 						deal[propertyName] = (parseFloat(value) || 0);
+						break;
+					case 'date':
+						value = parseInt(value);
+						deal[propertyName] = (isNaN(value) ? null : new Date(parseInt(value)));
 						break;
 					default:
 						deal[propertyName] = (parseInt(value) || 0);
