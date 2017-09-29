@@ -119,14 +119,16 @@ var DealsList = (function(){
 			control.limitToSchedule = doLimit;
 			if(doLimit){
 				Deal.filter(function(deal){
-					return (test.isDealProbabilityInRange(deal) && test.isDealDateInRange(deal));
+					return (deal.isProbabilityInRange(control.probability) && deal.isDateInRange(control.schedule));
 				});
 			}else{
 				Deal.filter(function(deal){
-					return (deal.isDealProbabilityInRange(deal));
+					return (deal.isProbabilityInRange(control.probability));
 				});
 			}
-			Deal.sort(control.sort);
+			if(control.sort.propertyName){
+				Deal.sort(control.sort);
+			}
 		}
 	}
 
@@ -155,10 +157,6 @@ var DealsList = (function(){
 			var deal = this;
 			event.redraw = false;
 			action.updateDeal(deal);
-		},
-		updateLimitToScheduleFilter: function(event){
-			var doLimit = !!(event.target.checked);
-			action.updateLimitToScheduleFilter(doLimit);
 		}
 	};
 
@@ -281,25 +279,26 @@ var DealsList = (function(){
 				]),
 				m('label', [
 					m('span', 'Show '),
-					m('input[type=number]', views.input('month', control.schedule.numMonths)),
+					m('input', views.input('month', control.schedule.numMonths)),
 					m('span', ' months starting '),
-					m('input[type=number]', views.input('month', control.schedule.startMonth)),
+					m('input', views.input('month', control.schedule.startMonth)),
 					m('span', '/'),
-					m('input[type=number]', views.input('year', control.schedule.startYear)),
+					m('input', views.input('year', control.schedule.startYear)),
 					m('button', {onclick: action.setScheduleRange}, 'Update')
 				]),
 				m('label', [
 					m('span', 'Show deals with a probability between '),
-					m('input[type=number]', views.input('percent', control.probability.probabilityLow)),
+					m('input', views.input('percent', control.probability.probabilityLow)),
 					m('span', ' and '),
-					m('input[type=number]', views.input('percent', control.probability.probabilityHigh)),
+					m('input', views.input('percent', control.probability.probabilityHigh)),
 					m('button', {onclick: action.setProbability}, 'Filter')
 				]),
 				m('label', [
 					m('span', 'Show only deals that will be in progress during the specified months?'),
-					m('input[type=checkbox]', {
+					m('input', {
+						type: 'checkbox',
 						value: control.limitToSchedule,
-						onchange: events.updateLimitToScheduleFilter
+						onchange: m.withAttr('checked', action.updateLimitToScheduleFilter)
 					})
 				])
 			];
@@ -324,7 +323,7 @@ var DealsList = (function(){
 					]),
 					m('label', [
 						m('span', 'Amount ($)'),
-						(newDeal.amount = m('input[type=number]', {value: deal.amount}))
+						(newDeal.amount = m('input', {value: deal.amount}))
 					]),
 					m('label.date', [
 						m('span', 'Close date'),

@@ -31,14 +31,14 @@ var Deal = (function(){
 			});
 			return Deal.allFiltered;
 		},
-		sort: function(sortProperties){
+		sort: function(sortOptions){
 			return Deal.allFiltered.sort(function(dealA, dealB){
-				var valA = dealA.getSortableProperty(sortProperties.propertyName);
-				var valB = dealB.getSortableProperty(sortProperties.propertyName);
+				var valA = dealA.getSortableProperty(sortOptions.propertyName);
+				var valB = dealB.getSortableProperty(sortOptions.propertyName);
 				if(valA > valB){
-					return (sortProperties.direction == 'asc' ? 1 : -1);
+					return (sortOptions.direction == 'asc' ? 1 : -1);
 				}else if(valA < valB){
-					return (sortProperties.direction == 'asc' ? -1 : 1);
+					return (sortOptions.direction == 'asc' ? -1 : 1);
 				}else{
 					return 0;
 				}
@@ -88,11 +88,11 @@ var Deal = (function(){
 			var valString = val.replace(match.nonAlphaNum, '').toLowerCase();
 			return (isNaN(valString) ? valString : parseFloat(val.replace(match.nonNum, '')) || '');
 		},
-		isDateInRange: function(startDate, endDate){
+		isDateInRange: function(test){
 			var deal = this;
-			var overlapsStartDate	= (deal.dates.start <= startDate && deal.dates.end >= startDate);
-			var overlapsEndDate		= (deal.dates.start <= endDate && deal.dates.end >= endDate);
-			var isInsideDates		= (deal.dates.start >= startDate && deal.dates.end <= endDate);
+			var overlapsStartDate	= (deal.dates.start <= test.startDate &&	deal.dates.end >= test.startDate);
+			var overlapsEndDate		= (deal.dates.start <= test.endDate &&		deal.dates.end >= test.endDate);
+			var isInsideDates		= (deal.dates.start >= test.startDate &&	deal.dates.end <= test.endDate);
 			return (overlapsStartDate || overlapsEndDate || isInsideDates);
 		},
 		isProbabilityInRange: function(test){
