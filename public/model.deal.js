@@ -63,7 +63,7 @@ var Deal = (function(){
 				}
 			}
 			Deal.allFiltered.sortOn(sortFunction);
-			if(sortDirection == 'desc'){
+			if(sortDirection == 'asc'){
 				Deal.allFiltered.reverse();
 			}
 			return Deal.allFiltered;

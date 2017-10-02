@@ -77,7 +77,7 @@ a:hover{
 [sortDirection="desc"]:before{
 	content: "\2193  ";
 }
-[isSorting]{
+[isCurrentlySorted]{
 	background-color:#ff6 !important;
 	color:#000 !important;
 }

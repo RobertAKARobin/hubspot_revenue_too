@@ -3,7 +3,10 @@
 var DealsList = (function(){
 
 	var control = {
-		sort: {},
+		sort: {
+			activeSortProperty: null,
+			directions: {}
+		},
 		probability: {
 			probabilityLow: m.stream(Location.query().probabilityLow || 75),
 			probabilityHigh: m.stream(Location.query().probabilityHigh || 99)
@@ -106,6 +109,37 @@ var DealsList = (function(){
 		}
 	}
 
+	var events = {
+		highlight: function(event){
+			var deal = this;
+			var highlightNum = control.highlights.indexOf(deal.dealId);
+			if(highlightNum >= 0){
+				control.highlights.splice(highlightNum, 1);
+			}else{
+				control.highlights.push(deal.dealId);
+			}
+		},
+		sort: function(event){
+			var sortOptions = this;
+			var sortProperty = sortOptions.sortProperty;
+			var sortFunction = sortOptions.sortFunction;
+			var sortDirection = (control.sort.directions[sortProperty] == 'asc' ? 'desc' : 'asc');
+			Deal.sortOn((sortFunction || sortProperty), sortDirection)
+			control.sort.directions[sortProperty] = sortDirection;
+			control.sort.activeSortProperty = sortProperty;
+		},
+		updateInput: function(event){
+			var attr = this;
+			var value = event.target.value;
+			event.redraw = false;
+			if(attr.type == 'number'){
+				stream(parseInt(value));
+			}else{
+				stream(value)
+			}
+		}
+	}
+
 	var views = {
 		input: function(type, stream){
 			switch(type){
@@ -153,33 +187,17 @@ var DealsList = (function(){
 					break;
 			}
 			attr.value = stream();
-			attr.oninput = function(event){
-				var value = event.target.value;
-				event.redraw = false;
-				if(attr.type == 'number'){
-					stream(parseInt(value));
-				}else{
-					stream(value)
-				}
-			}
+			attr.oninput = events.updateInput.bind(attr);
 			return attr;
 		},
 		sortable: function(sortProperty, sortFunction){
 			return {
-				sortDirection: 'asc',
-				isSorting: (sortProperty == control.sort.propertyName),
-				onclick: function(event){
-					var element = this;
-					var sortDirection = (element.getAttribute('sortDirection') == 'asc' ? 'desc' : 'asc');
-					control.sort.propertyName = sortProperty;
-					control.sort.direction = sortDirection;
-					if(sortFunction){
-						Deal.sortOn(sortFunction, sortDirection)
-					}else{
-						Deal.sortOn(sortProperty, sortDirection);
-					}
-					element.setAttribute('sortDirection', sortDirection);
-				}
+				isCurrentlySorted: (sortProperty == control.sort.activeSortProperty),
+				sortDirection: (control.sort.directions[sortProperty] || 'desc'),
+				onclick: events.sort.bind({
+					sortProperty: sortProperty,
+					sortFunction: sortFunction
+				})
 			}
 		}
 	}
@@ -218,17 +236,7 @@ var DealsList = (function(){
 		},
 		bodyRow: function(deal, index){
 			return m('tr.body[highlight=' + (control.highlights.indexOf(deal.dealId) >= 0 ? true : '') + ']', [
-				m('td[highlight-toggle]', {
-					onclick: function(event){
-						var deal = this;
-						var highlightNum = control.highlights.indexOf(deal.dealId);
-						if(highlightNum >= 0){
-							control.highlights.splice(highlightNum, 1);
-						}else{
-							control.highlights.push(deal.dealId);
-						}
-					}
-				}, Deal.allFiltered.length - index),
+				m('td[highlight-toggle]', {onclick: events.highlight.bind(deal)}, Deal.allFiltered.length - index),
 				m('th', [
 					m('a[href=https://app.hubspot.com/sales/211554/deal/' + deal.dealId + ']', deal.dealname)
 				]),
