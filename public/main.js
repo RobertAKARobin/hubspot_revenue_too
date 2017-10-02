@@ -15,8 +15,6 @@ var DealsList = (function(){
 		},
 		limitToSchedule: false,
 		highlights: [],
-		editStatus: {},
-		updateStatus: {},
 		loadStatus: {}
 	}
 
@@ -85,56 +83,10 @@ var DealsList = (function(){
 				numMonths: control.schedule.numMonths
 			});
 		},
-		showInEditor: function(deal){
-			var closedate = deal.closedate.toObject();
-			var startdate = deal.startdate.toObject();
-			control.editStatus.deal = {
-				dealId: deal.dealId,
-				dealname: m.stream(deal.dealname),
-				probability: m.stream(deal.probability_),
-				amount: m.stream(deal.amount),
-				closedate: {
-					month: m.stream(closedate.month),
-					day: m.stream(closedate.day),
-					year: m.stream(closedate.year)
-				},
-				startdate: {
-					month: m.stream(startdate.month),
-					year: m.stream(startdate.year)
-				},
-				schedule: m.stream(deal.schedule)
-			}
-			control.editStatus.doShow = true;
-		},
 		stopLoading: function(){
 			control.loadStatus.doContinue = false;
 			Deal.filter(function(deal){
 				return deal.isProbabilityInRange(control.probability);
-			});
-		},
-		updateDeal: function(deal){
-			var input = JSON.parse(JSON.stringify(deal));
-			input.closedate = Date.fromObject(deal.closedate).getTime();
-			input.startdate = Date.fromObject(deal.startdate).getTime();
-			control.updateStatus.inProgress = true;
-			control.updateStatus.message = null;
-			m.request({
-				url: '/deals/' + deal.dealId,
-				method: 'PUT',
-				data: {
-					deal: input
-				}
-			}).then(function(response){
-				console.log(response)
-				if(response.success){
-					var input = response.data.deal;
-					control.updateStatus.message = 'Updated successfully';
-					control.updateStatus.inProgress = false;
-					Deal.allById[input.dealId].updateProperties({properties: input});
-				}else{
-					control.updateStatus.message = 'Update failed';
-					console.log('Womp');
-				}
 			});
 		},
 		updateLimitToScheduleFilter: function(doLimit){
@@ -153,31 +105,6 @@ var DealsList = (function(){
 			}
 		}
 	}
-
-	var events = {
-		hideEditor: function(event){
-			control.editStatus.deal = null;
-			control.editStatus.doShow = false;
-		},
-		highlight: function(event){
-			var deal = this;
-			var highlightNum = control.highlights.indexOf(deal.dealId);
-			if(highlightNum >= 0){
-				control.highlights.splice(highlightNum, 1);
-			}else{
-				control.highlights.push(deal.dealId);
-			}
-		},
-		showEditor: function(event){
-			var deal = this;
-			control.updateStatus.message = null;
-			action.showInEditor(deal);
-		},
-		updateDeal: function(event){
-			var deal = this;
-			action.updateDeal(deal);
-		}
-	};
 
 	var views = {
 		input: function(type, stream){
@@ -270,8 +197,7 @@ var DealsList = (function(){
 					return m('th.date', views.sortable('monthlyAllocations.' + colName, function(deal){
 						return parseFloat(deal.monthlyAllocations[colName]) || 0;
 					}), date.toPrettyString());
-				}),
-				m('th')
+				})
 			]);
 		},
 		subheaderRow: function(){
@@ -287,13 +213,22 @@ var DealsList = (function(){
 					return m('th.number', Deal.allFiltered.reduce(function(sum, deal){
 						return sum += (deal.monthlyAllocations[colName] || 0);
 					}, 0).toDollars());
-				}),
-				m('th')
+				})
 			]);
 		},
 		bodyRow: function(deal, index){
 			return m('tr.body[highlight=' + (control.highlights.indexOf(deal.dealId) >= 0 ? true : '') + ']', [
-				m('td[highlight-toggle]', {onclick: events.highlight.bind(deal)}, Deal.allFiltered.length - index),
+				m('td[highlight-toggle]', {
+					onclick: function(event){
+						var deal = this;
+						var highlightNum = control.highlights.indexOf(deal.dealId);
+						if(highlightNum >= 0){
+							control.highlights.splice(highlightNum, 1);
+						}else{
+							control.highlights.push(deal.dealId);
+						}
+					}
+				}, Deal.allFiltered.length - index),
 				m('th', [
 					m('a[href=https://app.hubspot.com/sales/211554/deal/' + deal.dealId + ']', deal.dealname)
 				]),
@@ -303,10 +238,7 @@ var DealsList = (function(){
 				control.schedule.columnNames.map(function(colName){
 					var monthCost = (deal.monthlyAllocations[colName] || 0)
 					return m('td.number.revenue', (isNaN(monthCost) ? '' : monthCost.toDollars()))
-				}),
-				m('td', [
-					m('button', {onclick: events.showEditor.bind(deal)}, 'Edit')
-				])
+				})
 			]);
 		},
 		controls: function(){
@@ -345,58 +277,6 @@ var DealsList = (function(){
 					})
 				])
 			];
-		},
-		editor: function(deal){
-			return m('div.editor', [
-				m('a.shadow', {onclick: events.hideEditor}, ''),
-				m('div', [
-					m('a.cancel', {onclick: events.hideEditor}, 'Cancel'),
-					m('label', [
-						m('span', 'Name'),
-						m('input', views.input('text', deal.dealname).merge({
-							placeholder: 'ACME Company - Mobile app'
-						}))
-					]),
-					m('label', [
-						m('span', 'Probability (%)'),
-						m('input', views.input('percent', deal.probability))
-					]),
-					m('label', [
-						m('span', 'Amount ($)'),
-						m('input', views.input('dollars', deal.amount))
-					]),
-					m('label.date', [
-						m('span', 'Close date'),
-						m('input', views.input('month', deal.closedate.month)),
-						m('span', '/'),
-						m('input', views.input('day', deal.closedate.day)),
-						m('span', '/'),
-						m('input', views.input('year', deal.closedate.year))
-					]),
-					m('label.date', [
-						m('span', 'Start month'),
-						m('input', views.input('month', deal.startdate.month)),
-						m('span', ' / '),
-						m('input', views.input('year', deal.startdate.year))
-					]),
-					m('label', [
-						m('span', 'Schedule'),
-						m('textarea', views.input('text', deal.schedule).merge({
-							placeholder: '30%\n30%\n$4000.23\n%30'
-						}))
-					]),
-					control.updateStatus.inProgress ? [
-						m('button[disabled]', 'Updating...')
-					] : [
-						m('button', {onclick: events.updateDeal.bind(deal)}, 'Update'),
-						control.updateStatus.message ? [
-							m('p', control.updateStatus.message)
-						] : [
-							null
-						]
-					]
-				])
-			]);
 		}
 	};
 
@@ -408,7 +288,6 @@ var DealsList = (function(){
 			return [
 				m('h1', 'Deals'),
 				viewBlocks.controls(),
-				(control.editStatus.doShow ? viewBlocks.editor(control.editStatus.deal) : null),
 				m('table', [
 					viewBlocks.headerRow(),
 					viewBlocks.subheaderRow(),
