@@ -15,6 +15,7 @@
 	line-height: inherit;
 	color: inherit;
 	background-color:transparent;
+	box-sizing:border-box;
 }
 *:focus{
 	outline:none;
@@ -99,25 +100,36 @@ th, td{
 	padding:5px;
 	overflow:hidden;
 }
-tr label{
-	display:flex;
-	height:100%;
-}
-tr input{
-	flex-grow:1;
-	flex-shrink:1;
-}
 tr.body > *{
 	border-right:1px solid #ddd;
 }
-p, label{
+p,
+label,
+.label{
 	display:block;
 	padding:0 3px;
 	margin:10px 0;
 }
+label,
+.label{
+	display:flex;
+	flex-direction:row;
+	height:100%;
+	width:100%;
+}
+label > input,
+.label > input{
+	flex-grow:1;
+}
 .number,
 .date{
 	text-align:right;
+}
+.code{
+	font-family:monospace;
+}
+[error="1"]{
+	background-color:#ebb !important;
 }
 input:not(:last-child),
 button:not(:last-child){
@@ -168,83 +180,10 @@ button:not(:first-child){
 button:hover{
 	background-color:#999;
 }
-.editor{
-	display:block;
-	position:fixed;
-	top:0;
-	left:0;
-	width:100%;
-	height:100%;
-}
-.shadow{
-	display:block;
-	position:absolute;
-	top:0;
-	left:0;
-	width:100%;
-	height:100%;
-	background-color:rgba(0,0,0,0.5);
-}
-.editor > div{
-	display:block;
-	position:relative;
-	margin:10px auto;
-	padding:10px;
-	width:320px;
-	background-color:#fff;
-	border-radius:5px;
-	box-shadow:0 0 30px 3px #333;
-}
-.editor .cancel{
-	float:right;
-	font-size:0;
-	text-decoration:none;
-}
-.editor .cancel:after{
-	font-size:24px;
-	content:'\00d7';
-	color:#666;
-	font-weight:bold;
-}
-.editor button{
-	display:block;
-}
-.editor label,
-.editor button{
-	width:100%;
-	margin:5px auto 10px auto;
-}
-.editor label{
-	display:flex;
-}
-.editor label span{
-	padding-right:5px;
-}
-.editor label span:after{
-	content:':';
-}
-.editor label.date span:after{
-	content:'';
-}
-.editor label input,
-.editor label textarea{
-	flex-grow:1;
-}
-.editor .date{
-	display:flex;
-}
-.editor .date input{
-	width:1em;
-	flex-grow:1;
-	flex-shrink:1;
-}
 [highlight=true] > *,
 [highlight-toggle]:hover{
 	background-color:#ff6 !important;
 }
 [highlight-toggle]{
 	cursor:pointer;
-}
-.revenue{
-	background-color:#f6f6f6;
 }

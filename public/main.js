@@ -7,16 +7,10 @@ var DealsList = (function(){
 			activeSortProperty: null,
 			directions: {}
 		},
-		probability: {
-			probabilityLow: m.stream(Location.query().probabilityLow || 75),
-			probabilityHigh: m.stream(Location.query().probabilityHigh || 99)
+		query: {
+			value: m.stream(Location.query().query || ''),
+			status: undefined
 		},
-		schedule: {
-			startYear: m.stream(Location.query().startYear || (new Date().getFullYear())),
-			startMonth: m.stream(Location.query().startMonth || (new Date().getMonth() + 1)),
-			numMonths: m.stream(Location.query().numMonths || 3)
-		},
-		limitToSchedule: false,
 		highlights: [],
 		loadStatus: {}
 	}
@@ -43,7 +37,6 @@ var DealsList = (function(){
 			}
 
 			function parseResponse(response){
-				console.log(response)
 				if(response.success && control.loadStatus.doContinue){
 					response.deals.forEach(Deal.new);
 					control.loadStatus.offset = response.offset;
@@ -55,58 +48,23 @@ var DealsList = (function(){
 				}
 			}
 		},
-		setProbability: function(){
-			var input = Object.values(JSON.parse(JSON.stringify(control.probability)));
-			control.probability.probabilityLow(Math.min.apply(null, input));
-			control.probability.probabilityHigh(Math.max.apply(null, input));
-			Location.query(control.probability);
-			Deal.filter(function(deal){
-				return deal.isProbabilityInRange(control.probability);
-			});
-		},
-		setScheduleRange: function(){
-			var numMonths = parseInt(control.schedule.numMonths);
-			var startDate = control.schedule.startDate = new Date(
-				parseInt(control.schedule.startYear),
-				parseInt(control.schedule.startMonth) - 1
-			);
-			var endDate = control.schedule.endDate = new Date(
-				startDate.getFullYear(),
-				startDate.getMonth() + numMonths,
-				1, 0, 0, -1
-			);
-			var counter = new Date(startDate.getTime());
-			control.schedule.columnNames = [];
-			for(var i = 0; i < numMonths; i += 1){
-				control.schedule.columnNames.push(counter.getTime());
-				counter.setMonth(counter.getMonth() + 1);
+		filter: function(){
+			var query = control.query.value();
+			var deal = {};
+			control.query.status = undefined;
+			try{
+				if(!query) throw new Error();
+				eval(query);
+				Deal.filter(function(deal){
+					var result = eval(query);
+					return result;
+				});
+			}catch(error){
+				control.query.status = 'error';
 			}
-			Location.query({
-				startMonth: control.schedule.startMonth,
-				startYear: control.schedule.startYear,
-				numMonths: control.schedule.numMonths
-			});
 		},
 		stopLoading: function(){
 			control.loadStatus.doContinue = false;
-			Deal.filter(function(deal){
-				return deal.isProbabilityInRange(control.probability);
-			});
-		},
-		updateLimitToScheduleFilter: function(doLimit){
-			control.limitToSchedule = doLimit;
-			if(doLimit){
-				Deal.filter(function(deal){
-					return (deal.isProbabilityInRange(control.probability) && deal.isDateInRange(control.schedule));
-				});
-			}else{
-				Deal.filter(function(deal){
-					return (deal.isProbabilityInRange(control.probability));
-				});
-			}
-			if(control.sort.propertyName){
-				Deal.sortOn(control.sort.propertyName, control.sort.direction);
-			}
 		}
 	}
 
@@ -130,68 +88,18 @@ var DealsList = (function(){
 			control.sort.activeSortProperty = sortProperty;
 		},
 		updateInput: function(event){
-			var attr = this;
-			var stream = attr.stream;
-			var value = event.target.value;
+			var stream = this;
 			event.redraw = false;
-			if(attr.type == 'number'){
-				stream(parseInt(value));
-			}else{
-				stream(value)
-			}
+			stream(event.target.value);
 		}
 	}
 
 	var views = {
-		input: function(type, stream){
-			switch(type){
-				case 'month':
-					var attr = {
-						type: 'number',
-						placeholder: 'MM',
-						min: 1,
-						max: 12
-					}
-					break;
-				case 'year':
-					var attr = {
-						type: 'number',
-						placeholder: 'YY',
-						min: 2000,
-						max: 2040
-					}
-					break;
-				case 'day':
-					var attr = {
-						type: 'number',
-						placeholder: 'DD',
-						min: 1,
-						max: 31
-					}
-					break;
-				case 'percent':
-					var attr = {
-						type: 'number',
-						placeholder: '%%',
-						min: 0,
-						max: 100
-					}
-					break;
-				case 'dollars':
-					var attr = {
-						type: 'number',
-						placeholder: '$.$$',
-						step: '0.01'
-					}
-					break;
-				default:
-					var attr = {}
-					break;
+		input: function(stream){
+			return {
+				value: stream(),
+				oninput: events.updateInput.bind(stream)
 			}
-			attr.stream = stream;
-			attr.value = stream();
-			attr.oninput = events.updateInput.bind(attr);
-			return attr;
 		},
 		sortable: function(sortProperty, sortFunction){
 			return {
@@ -212,13 +120,7 @@ var DealsList = (function(){
 				m('th', views.sortable('dealname'), 'Name'),
 				m('th', views.sortable('probability_'), 'Probability'),
 				m('th', views.sortable('amount'), 'Amount'),
-				m('th', views.sortable('closedate'), 'Close date'),
-				control.schedule.columnNames.map(function(colName){
-					var date = new Date(colName);
-					return m('th.date', views.sortable('monthlyAllocations.' + colName, function(deal){
-						return parseFloat(deal.monthlyAllocations[colName]) || 0;
-					}), date.toPrettyString());
-				})
+				m('th', views.sortable('closedate'), 'Close date')
 			]);
 		},
 		subheaderRow: function(){
@@ -229,12 +131,7 @@ var DealsList = (function(){
 				m('th.number', Deal.allFiltered.reduce(function(sum, deal){
 					return sum += (deal.amount || 0);
 				}, 0).toDollars()),
-				m('th'),
-				control.schedule.columnNames.map(function(colName){
-					return m('th.number', Deal.allFiltered.reduce(function(sum, deal){
-						return sum += (deal.monthlyAllocations[colName] || 0);
-					}, 0).toDollars());
-				})
+				m('th')
 			]);
 		},
 		bodyRow: function(deal, index){
@@ -245,11 +142,7 @@ var DealsList = (function(){
 				]),
 				m('td.number', deal.probability_),
 				m('td.number', deal.amount.toDollars()),
-				m('td.number', deal.closedate.toPrettyString(true)),
-				control.schedule.columnNames.map(function(colName){
-					var monthCost = (deal.monthlyAllocations[colName] || 0)
-					return m('td.number.revenue', (isNaN(monthCost) ? '' : monthCost.toDollars()))
-				})
+				m('td.number', deal.closedate.toPrettyString(true))
 			]);
 		},
 		controls: function(){
@@ -263,38 +156,17 @@ var DealsList = (function(){
 						m('button', {onclick: action.loadDeals}, 'Refresh')
 					]
 				]),
-				m('label', [
-					m('span', 'Show '),
-					m('input', views.input('month', control.schedule.numMonths)),
-					m('span', ' months starting '),
-					m('input', views.input('month', control.schedule.startMonth)),
-					m('span', '/'),
-					m('input', views.input('year', control.schedule.startYear)),
-					m('button', {onclick: action.setScheduleRange}, 'Update')
-				]),
-				m('label', [
-					m('span', 'Show deals with a probability between '),
-					m('input', views.input('percent', control.probability.probabilityLow)),
-					m('span', ' and '),
-					m('input', views.input('percent', control.probability.probabilityHigh)),
-					m('button', {onclick: action.setProbability}, 'Filter')
-				]),
-				m('label', [
-					m('span', 'Show only deals that will be in progress during the specified months?'),
-					m('input', {
-						type: 'checkbox',
-						value: control.limitToSchedule,
-						onchange: m.withAttr('checked', action.updateLimitToScheduleFilter)
-					})
+				m('p.label', [
+					m('button', {onclick: action.filter}, 'Filter:'),
+					m('input.code', views.input(control.query.value).merge({
+						error: (control.query.status ? 1 : 0)
+					})),
 				])
 			];
 		}
 	};
 
 	return {
-		oninit: function(){
-			action.setScheduleRange();
-		},
 		view: function(){
 			return [
 				m('h1', 'Deals'),

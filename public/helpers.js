@@ -69,6 +69,9 @@ Object.defineProperty(Object.prototype, 'merge', {
 	enumerable: false,
 	value: function(input){
 		var object = this;
-		return Object.assign(input, JSON.parse(JSON.stringify(object)));
+		for(var key in object){
+			input[key] = object[key];
+		}
+		return input;
 	}
 })

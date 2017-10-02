@@ -9,7 +9,7 @@ var Deal = (function(){
 		properties: {
 			createdate: 'integer',
 			dealname: 'string',
-			'probability_': 'integer',
+			probability_: 'integer',
 			amount: 'float', 
 			closedate: 'date',
 			startdate: 'date',
@@ -85,22 +85,6 @@ var Deal = (function(){
 	}
 
 	var $Instance = {
-		isDateInRange: function(test){
-			var deal = this;
-			var overlapsStartDate	= (deal.startdate <= test.startDate &&	deal.enddate >= test.startDate);
-			var overlapsEndDate		= (deal.startdate <= test.endDate &&	deal.enddate >= test.endDate);
-			var isInsideDates		= (deal.startdate >= test.startDate &&	deal.enddate <= test.endDate);
-			return (overlapsStartDate || overlapsEndDate || isInsideDates);
-		},
-		isProbabilityInRange: function(test){
-			var deal = this;
-			var probability = deal.probability_;
-			if(isNaN(probability)){
-				return false;
-			}else{
-				return (probability >= test.probabilityLow && probability <= test.probabilityHigh);
-			}
-		},
 		updateProperties: function(input){
 			var deal = this;
 			for(var propertyName in Deal.properties){
