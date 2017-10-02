@@ -1,2 +1,3 @@
 .env.json
 sample.json
+node_modules/*

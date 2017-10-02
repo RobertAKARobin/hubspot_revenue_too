@@ -36,25 +36,37 @@ var Deal = (function(){
 			});
 			return Deal.allFiltered;
 		},
-		sort: function(sortOptions){
-			return Deal.allFiltered.sort(function(dealA, dealB){
-				var valA = dealA.getSortableProperty(sortOptions.propertyName);
-				var valB = dealB.getSortableProperty(sortOptions.propertyName);
-				if(valA > valB){
-					return (sortOptions.direction == 'asc' ? 1 : -1);
-				}else if(valA < valB){
-					return (sortOptions.direction == 'asc' ? -1 : 1);
-				}else{
-					return 0;
+		sortOn: function(sortProperty, sortDirection){
+			if(sortProperty instanceof Function){
+				var sortFunction = sortProperty;
+			}else{
+				switch(Deal.properties[sortProperty]){
+					case 'string':
+						var sortFunction = function(deal){
+							return deal[sortProperty].toString().toLowerCase().replace(/[^a-zA-Z0-9]/g,'');
+						}
+						break;
+					case 'float':
+						var sortFunction = function(deal){
+							return parseFloat(deal[sortProperty]) || 0;
+						}
+						break;
+					case 'integer':
+						var sortFunction = function(deal){
+							return parseInt(deal[sortProperty]) || 0;
+						}
+						break;
+					default:
+						var sortFunction = function(deal){
+							return deal[sortProperty];
+						}
 				}
-			});
-		},
-		sum: function(propertyName){
-			var result = 0;
-			for(var i = 0, l = Deal.allFiltered.length; i < l; i++){
-				result += (parseFloat(Deal.allFiltered[i].getNestedProperty(propertyName)) || 0);
 			}
-			return result;
+			Deal.allFiltered.sortOn(sortFunction);
+			if(sortDirection == 'desc'){
+				Deal.allFiltered.reverse();
+			}
+			return Deal.allFiltered;
 		}
 	}
 
@@ -73,31 +85,11 @@ var Deal = (function(){
 	}
 
 	var $Instance = {
-		getNestedProperty: function(propertyString){
-			var object = this;
-			var propertyTree = propertyString.split('.');
-			var currentProperty = null;
-			for(var i = 0, l = propertyTree.length; i < l; i++){
-				currentProperty = object[propertyTree[i]];
-				if(currentProperty === undefined){
-					object = {};
-				}else{
-					object = currentProperty;
-				}
-			}
-			return currentProperty;	
-		},
-		getSortableProperty: function(propertyName){
-			var deal = this;
-			var val = (deal.getNestedProperty(propertyName) || '').toString();
-			var valString = val.replace(match.nonAlphaNum, '').toLowerCase();
-			return (isNaN(valString) ? valString : parseFloat(val.replace(match.nonNum, '')) || '');
-		},
 		isDateInRange: function(test){
 			var deal = this;
-			var overlapsStartDate	= (deal.dates.start <= test.startDate &&	deal.dates.end >= test.startDate);
-			var overlapsEndDate		= (deal.dates.start <= test.endDate &&		deal.dates.end >= test.endDate);
-			var isInsideDates		= (deal.dates.start >= test.startDate &&	deal.dates.end <= test.endDate);
+			var overlapsStartDate	= (deal.startdate <= test.startDate &&	deal.enddate >= test.startDate);
+			var overlapsEndDate		= (deal.startdate <= test.endDate &&	deal.enddate >= test.endDate);
+			var isInsideDates		= (deal.startdate >= test.startDate &&	deal.enddate <= test.endDate);
 			return (overlapsStartDate || overlapsEndDate || isInsideDates);
 		},
 		isProbabilityInRange: function(test){
@@ -135,14 +127,13 @@ var Deal = (function(){
 			var deal = this;
 			var HSTimeZoneOffset = (5 * 60 * 60 * 1000);
 			deal.schedule = (deal.schedule || deal.amount.toString());
-			deal.dates = {};
-			deal.dates.close = new Date((deal.closedate || 0) + HSTimeZoneOffset);
-			deal.dates.start = new Date((deal.startdate || deal.closedate) + HSTimeZoneOffset);
-			deal.dates.start = new Date(deal.dates.start.getFullYear(), deal.dates.start.getMonth());
+			deal.closedate = new Date((deal.closedate || 0) + HSTimeZoneOffset);
+			deal.startdate = new Date((deal.startdate || deal.closedate) + HSTimeZoneOffset);
+			deal.startdate = new Date(deal.startdate.getFullYear(), deal.startdate.getMonth());
 			deal.updateAllocations();
-			deal.dates.end = new Date(
-				deal.dates.start.getFullYear(),
-				deal.dates.start.getMonth() + Object.keys(deal.monthlyAllocations).length,
+			deal.enddate = new Date(
+				deal.startdate.getFullYear(),
+				deal.startdate.getMonth() + Object.keys(deal.monthlyAllocations).length,
 				1, 0, 0, 0, -1
 			);
 			return deal;
@@ -150,7 +141,7 @@ var Deal = (function(){
 		updateAllocations: function(){
 			var deal = this;
 			var monthlyAllocations = (deal.schedule.match(match.scheduleString) || []);
-			var startDate = new Date(deal.dates.start.getTime());
+			var startDate = new Date(deal.startdate.getTime());
 			deal.monthlyAllocations = {};
 			for(var i = 0, l = monthlyAllocations.length; i < l; i++){
 				var monthlyAllocation = monthlyAllocations[i];

@@ -85,16 +85,9 @@ var DealsList = (function(){
 				numMonths: control.schedule.numMonths
 			});
 		},
-		sort: function(propertyName){
-			control.sort = {
-				propertyName: propertyName,
-				direction: (control.sort.direction == 'asc' ? 'desc' : 'asc')
-			}
-			Deal.sort(control.sort);
-		},
 		showInEditor: function(deal){
-			var closedate = deal.dates.close.toObject();
-			var startdate = deal.dates.start.toObject();
+			var closedate = deal.closedate.toObject();
+			var startdate = deal.startdate.toObject();
 			control.editStatus.deal = {
 				dealId: deal.dealId,
 				dealname: m.stream(deal.dealname),
@@ -156,7 +149,7 @@ var DealsList = (function(){
 				});
 			}
 			if(control.sort.propertyName){
-				Deal.sort(control.sort);
+				Deal.sortOn(control.sort.propertyName, control.sort.direction);
 			}
 		}
 	}
@@ -244,11 +237,22 @@ var DealsList = (function(){
 			}
 			return attr;
 		},
-		sortable: function(propertyName){
+		sortable: function(sortProperty, sortFunction){
 			return {
-				sortProperty: propertyName,
-				sorting: (propertyName == control.sort.propertyName ? control.sort.direction : ''),
-				onclick: m.withAttr('sortProperty', action.sort)
+				sortDirection: 'asc',
+				isSorting: (sortProperty == control.sort.propertyName),
+				onclick: function(event){
+					var element = this;
+					var sortDirection = (element.getAttribute('sortDirection') == 'asc' ? 'desc' : 'asc');
+					control.sort.propertyName = sortProperty;
+					control.sort.direction = sortDirection;
+					if(sortFunction){
+						Deal.sortOn(sortFunction, sortDirection)
+					}else{
+						Deal.sortOn(sortProperty, sortDirection);
+					}
+					element.setAttribute('sortDirection', sortDirection);
+				}
 			}
 		}
 	}
@@ -263,7 +267,9 @@ var DealsList = (function(){
 				m('th', views.sortable('closedate'), 'Close date'),
 				control.schedule.columnNames.map(function(colName){
 					var date = new Date(colName);
-					return m('th.date', views.sortable('monthlyAllocations.' + colName), date.toPrettyString());
+					return m('th.date', views.sortable('monthlyAllocations.' + colName, function(deal){
+						return parseFloat(deal.monthlyAllocations[colName]) || 0;
+					}), date.toPrettyString());
 				}),
 				m('th')
 			]);
@@ -273,10 +279,14 @@ var DealsList = (function(){
 				m('th'),
 				m('th', 'TOTALS'),
 				m('th.number'),
-				m('th.number', Deal.sum('amount').toDollars()),
+				m('th.number', Deal.allFiltered.reduce(function(sum, deal){
+					return sum += (deal.amount || 0);
+				}, 0).toDollars()),
 				m('th'),
 				control.schedule.columnNames.map(function(colName){
-					return m('th.number', Deal.sum('monthlyAllocations.' + colName).toDollars());
+					return m('th.number', Deal.allFiltered.reduce(function(sum, deal){
+						return sum += (deal.monthlyAllocations[colName] || 0);
+					}, 0).toDollars());
 				}),
 				m('th')
 			]);

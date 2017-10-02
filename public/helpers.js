@@ -9,6 +9,20 @@ m.wrap = function(wrapperNode, wrapperAttributes, list){
 	return output;
 }
 
+Array.prototype.sortOn = function(callback){
+	var array = this;
+	return array.sort(function(itemA, itemB){
+		var valA = callback(itemA);
+		var valB = callback(itemB);
+		if(valA > valB){
+			return -1
+		}else if(valA < valB){
+			return 1
+		}else{
+			return 0;
+		}
+	});
+}
 Location.query = function(paramsObject){
 	var query = m.parseQueryString((window.location.href.match(/\?.*?$/g) || [])[0]);
 	var newurl = window.location.origin + window.location.pathname;

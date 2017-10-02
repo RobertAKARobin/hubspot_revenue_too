@@ -64,24 +64,22 @@ a:hover{
 	border-color:#777;
 	font-weight:normal;
 }
-[sorting]{
+[sortDirection]{
 	cursor:pointer;
-	color:#fff;
 	text-decoration:underline;
 }
-[sorting=""]{
-	color:inherit;
-	text-decoration:none;
-}
-[sorting=""]:before{
+[sortDirection]:before{
 	color:#aaa;
-	content: "\296e  ";
 }
-[sorting="asc"]:before{
+[sortDirection="asc"]:before{
 	content: "\2191  ";
 }
-[sorting="desc"]:before{
+[sortDirection="desc"]:before{
 	content: "\2193  ";
+}
+[isSorting]{
+	background-color:#ff6 !important;
+	color:#000 !important;
 }
 .subheaders > *{
 	border:0;
