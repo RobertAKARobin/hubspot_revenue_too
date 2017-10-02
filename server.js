@@ -42,8 +42,4 @@ httpServer
 			apiResponse.success = true;
 			res.send(apiResponse);
 		});
-	})
-	.put('/deals/:dealId', function(req, res){
-		var apiResponse = req.body;
-		res.json({success: true, data: apiResponse});
 	});
