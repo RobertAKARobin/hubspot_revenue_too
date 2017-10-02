@@ -43,6 +43,7 @@ var DealsList = (function(){
 			}
 
 			function parseResponse(response){
+				console.log(response)
 				if(response.success && control.loadStatus.doContinue){
 					response.deals.forEach(Deal.new);
 					control.loadStatus.offset = response.offset;
@@ -130,6 +131,7 @@ var DealsList = (function(){
 		},
 		updateInput: function(event){
 			var attr = this;
+			var stream = attr.stream;
 			var value = event.target.value;
 			event.redraw = false;
 			if(attr.type == 'number'){
@@ -186,6 +188,7 @@ var DealsList = (function(){
 					var attr = {}
 					break;
 			}
+			attr.stream = stream;
 			attr.value = stream();
 			attr.oninput = events.updateInput.bind(attr);
 			return attr;
