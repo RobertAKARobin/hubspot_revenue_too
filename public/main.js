@@ -79,11 +79,9 @@ var DealsList = (function(){
 			}
 		},
 		sort: function(event){
-			var sortOptions = this;
-			var sortProperty = sortOptions.sortProperty;
-			var sortFunction = sortOptions.sortFunction;
+			var sortProperty = this;
 			var sortDirection = (control.sort.directions[sortProperty] == 'asc' ? 'desc' : 'asc');
-			Deal.sortOn((sortFunction || sortProperty), sortDirection)
+			Deal.sortOn(sortProperty, sortDirection)
 			control.sort.directions[sortProperty] = sortDirection;
 			control.sort.activeSortProperty = sortProperty;
 		},
@@ -101,14 +99,11 @@ var DealsList = (function(){
 				oninput: events.updateInput.bind(stream)
 			}
 		},
-		sortable: function(sortProperty, sortFunction){
+		sortable: function(sortProperty){
 			return {
 				isCurrentlySorted: (sortProperty == control.sort.activeSortProperty),
 				sortDirection: (control.sort.directions[sortProperty] || 'desc'),
-				onclick: events.sort.bind({
-					sortProperty: sortProperty,
-					sortFunction: sortFunction
-				})
+				onclick: events.sort.bind(sortProperty)
 			}
 		}
 	}
@@ -142,7 +137,7 @@ var DealsList = (function(){
 				]),
 				m('td.number', deal.probability_),
 				m('td.number', deal.amount.toDollars()),
-				m('td.number', deal.closedate.toPrettyString(true))
+				m('td.number', deal.closedate)
 			]);
 		},
 		controls: function(){

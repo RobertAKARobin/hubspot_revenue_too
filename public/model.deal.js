@@ -7,13 +7,29 @@ var Deal = (function(){
 		allById: {},
 		allFiltered: [],
 		properties: {
-			createdate: 'integer',
 			dealname: 'string',
 			probability_: 'integer',
 			amount: 'float', 
 			closedate: 'date',
-			startdate: 'date',
 			schedule: 'string'
+		},
+		formatFromAPI: {
+			float: function(value){
+				return (parseFloat(value || 0));
+			},
+			integer: function(value){
+				return (parseInt(value || 0));
+			},
+			date: function(value){
+				value = parseInt(value);
+				if(isNaN(value)){
+					value = null;
+				}else{
+					value = new Date(value + (5 * 60 * 60 * 1000));
+					value = value.getFullYear() + '/' + value.getMonthWithZeroes() + '/' + value.getDateWithZeroes();
+				}
+				return value;
+			}
 		},
 		clear: function(){
 			Deal.all = [];
@@ -37,32 +53,9 @@ var Deal = (function(){
 			return Deal.allFiltered;
 		},
 		sortOn: function(sortProperty, sortDirection){
-			if(sortProperty instanceof Function){
-				var sortFunction = sortProperty;
-			}else{
-				switch(Deal.properties[sortProperty]){
-					case 'string':
-						var sortFunction = function(deal){
-							return deal[sortProperty].toString().toLowerCase().replace(/[^a-zA-Z0-9]/g,'');
-						}
-						break;
-					case 'float':
-						var sortFunction = function(deal){
-							return parseFloat(deal[sortProperty]) || 0;
-						}
-						break;
-					case 'integer':
-						var sortFunction = function(deal){
-							return parseInt(deal[sortProperty]) || 0;
-						}
-						break;
-					default:
-						var sortFunction = function(deal){
-							return deal[sortProperty];
-						}
-				}
-			}
-			Deal.allFiltered.sortOn(sortFunction);
+			Deal.allFiltered.sortOn(Deal.properties[sortProperty] != 'string' ? sortProperty : function(deal){
+				return deal[sortProperty].toString().toLowerCase().replace(/[^a-zA-Z0-9]/g,'');
+			});
 			if(sortDirection == 'asc'){
 				Deal.allFiltered.reverse();
 			}
@@ -78,66 +71,35 @@ var Deal = (function(){
 		return deal;
 	}
 
-	var match = {
-		scheduleString: /\$\d+\.?\d{0,2}|%\d+\.?\d{0,2}|\d+\.?\d{0,2}%|\d+\.?\d{0,2}/gm,
-		nonAlphaNum: /[^a-zA-Z0-9]/g,
-		nonNum: /[^\d\.]/g
-	}
-
 	var $Instance = {
 		updateProperties: function(input){
 			var deal = this;
 			for(var propertyName in Deal.properties){
 				var value = input.properties[propertyName];
+				var type = Deal.properties[propertyName];
+				var formatFunction = Deal.formatFromAPI[type];
 				value = (value instanceof Object ? value.value : value);
-				switch(Deal.properties[propertyName]){
-					case 'string':
-						deal[propertyName] = (value || '');
-						break;
-					case 'float':
-						deal[propertyName] = (parseFloat(value) || 0);
-						break;
-					case 'date':
-						value = parseInt(value);
-						deal[propertyName] = (isNaN(value) ? null : new Date(parseInt(value)));
-						break;
-					default:
-						deal[propertyName] = (parseInt(value) || 0);
-				}
+				deal[propertyName] = (formatFunction ? formatFunction.call(null, value) : value);
 			}
-			return deal.updateDates();
-		},
-		updateDates: function(){
-			var deal = this;
-			var HSTimeZoneOffset = (5 * 60 * 60 * 1000);
-			deal.schedule = (deal.schedule || deal.amount.toString());
-			deal.closedate = new Date((deal.closedate || 0) + HSTimeZoneOffset);
-			deal.startdate = new Date((deal.startdate || deal.closedate) + HSTimeZoneOffset);
-			deal.startdate = new Date(deal.startdate.getFullYear(), deal.startdate.getMonth());
-			deal.updateAllocations();
-			deal.enddate = new Date(
-				deal.startdate.getFullYear(),
-				deal.startdate.getMonth() + Object.keys(deal.monthlyAllocations).length,
-				1, 0, 0, 0, -1
-			);
 			return deal;
 		},
 		updateAllocations: function(){
 			var deal = this;
-			var monthlyAllocations = (deal.schedule.match(match.scheduleString) || []);
-			var startDate = new Date(deal.startdate.getTime());
-			deal.monthlyAllocations = {};
-			for(var i = 0, l = monthlyAllocations.length; i < l; i++){
-				var monthlyAllocation = monthlyAllocations[i];
-				var numericValueForMonth = parseFloat(monthlyAllocation.replace(match.nonNum, ''));
-				var dollarValueForMonth = numericValueForMonth;
-				if(/%/.test(monthlyAllocation)){
-					dollarValueForMonth = (numericValueForMonth * (deal.amount / 100));
-				}
-				deal.monthlyAllocations[startDate.getTime()] = dollarValueForMonth;
-				startDate.setMonth(startDate.getMonth() + 1);
-			}
 			return deal;
+			// var monthlyAllocations = (deal.schedule.match(match.scheduleString) || []);
+			// var startDate = new Date(deal.startdate.getTime());
+			// deal.monthlyAllocations = {};
+			// for(var i = 0, l = monthlyAllocations.length; i < l; i++){
+			// 	var monthlyAllocation = monthlyAllocations[i];
+			// 	var numericValueForMonth = parseFloat(monthlyAllocation.replace(match.nonNum, ''));
+			// 	var dollarValueForMonth = numericValueForMonth;
+			// 	if(/%/.test(monthlyAllocation)){
+			// 		dollarValueForMonth = (numericValueForMonth * (deal.amount / 100));
+			// 	}
+			// 	deal.monthlyAllocations[startDate.getTime()] = dollarValueForMonth;
+			// 	startDate.setMonth(startDate.getMonth() + 1);
+			// }
+			// return deal;
 		}
 	}
 

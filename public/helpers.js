@@ -9,11 +9,14 @@ m.wrap = function(wrapperNode, wrapperAttributes, list){
 	return output;
 }
 
-Array.prototype.sortOn = function(callback){
+Array.prototype.sortOn = function(sortProperty){
 	var array = this;
+	var sortFunction = ((sortProperty instanceof Function) ? sortProperty : function(item){
+		return item[sortProperty];
+	});
 	return array.sort(function(itemA, itemB){
-		var valA = callback(itemA);
-		var valB = callback(itemB);
+		var valA = sortFunction(itemA);
+		var valB = sortFunction(itemB);
 		if(valA > valB){
 			return -1
 		}else if(valA < valB){
@@ -60,6 +63,14 @@ Date.prototype.toPrettyString = function(showDays){
 	}else{
 		return month + delim + year;
 	}
+}
+Date.prototype.getMonthWithZeroes = function(){
+	var date = this;
+	return ('0' + (date.getMonth()+1)).slice(-2);
+}
+Date.prototype.getDateWithZeroes = function(){
+	var date = this;
+	return ('0' + date.getDate()).slice(-2);
 }
 Number.prototype.toDollars = function(){
 	var amount = this;
