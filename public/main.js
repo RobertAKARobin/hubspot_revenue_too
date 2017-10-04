@@ -53,15 +53,14 @@ var DealsList = (function(){
 			var deal = {};
 			control.query.status = undefined;
 			try{
-				if(!query) throw new Error();
 				eval(query);
-				Deal.filter(function(deal){
-					var result = eval(query);
-					return result;
-				});
 			}catch(error){
 				control.query.status = 'error';
 			}
+			Deal.filter(function(deal){
+				return eval(query);
+			});
+			Location.query({query: query});
 		},
 		stopLoading: function(){
 			control.loadStatus.doContinue = false;
