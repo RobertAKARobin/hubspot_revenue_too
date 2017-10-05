@@ -117,6 +117,8 @@ var DealsList = (function(){
 		stopLoading: function(event){
 			control.loadStatus.doContinue = false;
 			control.loadStatus.lastRefresh = (new Date()).getTime();
+			events.filter();
+			Deal.sortOn(control.sort.sctiveSortProperty, control.sort.directions[control.sort.activeSortProperty]);
 		},
 		updateInput: function(event){
 			var stream = this;
