@@ -101,4 +101,30 @@ httpServer
 			apiResponse.success = true;
 			res.send(apiResponse);
 		});
+	})
+	.get('/deals/refresh', function(req, res){
+		var query = [];
+		if(process.env['NODE_ENV'] == 'development'){
+			query.push('hapikey=' + ENV['HAPIKEY']);
+		}
+		query.push('count=' + (req.query.count || 100));
+		query.push('offset=' + (req.query.offset || 0));
+		query.push('since=' + req.query.since);
+
+
+		var params = {
+			method: 'GET',
+			url: 'https://api.hubapi.com/deals/v1/deal/recent/modified?' + query.join('&')
+		}
+		if(process.env['NODE_ENV'] == 'production'){
+			params.headers = {
+				'Authorization': 'Bearer ' + req.cookies['access_token']
+			}
+		}
+
+		request(params, function(error, response, body){
+			var apiResponse = JSON.parse(body);
+			apiResponse.success = true;
+			res.send(apiResponse);
+		});
 	});

@@ -7,13 +7,14 @@ var DealsList = (function(){
 	var events = {
 		filter: function(event){
 			var inputQuery = control.query.value();
+			var query = inputQuery;
 			var deal = {};
 			var matcher = new RegExp(Object.keys(Deal.properties).join('|'), 'g');
 			control.query.status = undefined;
 			try{
-				var query = inputQuery.replace(matcher, function(propertyName){
+				query = query.replace(matcher, function(propertyName){
 					return 'deal["' + propertyName + '"]';
-				})
+				});
 				eval(query);
 			}catch(error){
 				control.query.status = 'error';
@@ -39,10 +40,10 @@ var DealsList = (function(){
 			Location.query({startMonth: views.monthName(control.startMonth)});
 		},
 		loadDeals: function(event){
-			control.loadStatus = {
-				offset: 0,
-				doContinue: true
-			}
+			control.loadStatus.offset = 0;
+			control.loadStatus.length = 0;
+			control.loadStatus.doContinue = true;
+
 			Deal.clear();
 			loadNextPage();
 
@@ -62,6 +63,42 @@ var DealsList = (function(){
 				if(response.success && control.loadStatus.doContinue){
 					response.deals.forEach(Deal.new);
 					control.loadStatus.offset = response.offset;
+					control.loadStatus.length = Deal.all.length;
+				}
+				if(response.success && response.hasMore && control.loadStatus.doContinue){
+					loadNextPage();
+				}else{
+					events.stopLoading();
+				}
+			}
+		},
+		refreshDeals: function(event){
+			control.loadStatus.offset = 0;
+			control.loadStatus.length = 0;
+			control.loadStatus.doContinue = true;
+
+			loadNextPage();
+
+			function loadNextPage(){
+				m.request({
+					url: '/deals/refresh',
+					method: 'GET',
+					data: {
+						count: 100,
+						since: control.loadStatus.lastRefresh
+					}
+				}).then(parseResponse);
+			}
+
+			function updateDeal(dealInput){
+				Deal.allById[dealInput.dealId].updateProperties(dealInput);
+			}
+
+			function parseResponse(response){
+				if(response.success && control.loadStatus.doContinue){
+					response.results.forEach(updateDeal);
+					control.loadStatus.offset = response.offset;
+					control.loadStatus.length = response.offset;
 				}
 				if(response.success && response.hasMore && control.loadStatus.doContinue){
 					loadNextPage();
@@ -79,6 +116,7 @@ var DealsList = (function(){
 		},
 		stopLoading: function(event){
 			control.loadStatus.doContinue = false;
+			control.loadStatus.lastRefresh = (new Date()).getTime();
 		},
 		updateInput: function(event){
 			var stream = this;
@@ -178,29 +216,6 @@ var DealsList = (function(){
 					return m('td.number' + colspan, (allocation ? allocation.toDollars() : ''));
 				})
 			]);
-		},
-		controls: function(){
-			return [
-				m('p', [
-					control.loadStatus.doContinue ? [
-						m('span', 'Loading ' + (Deal.all.length || '') + '...'),
-						m('button', {onclick: events.stopLoading}, 'Cancel')
-					] : [
-						m('span', Deal.all.length + ' loaded in memory. ' + (Deal.allFiltered.length || 0) + ' match the current filters.'),
-						m('button', {onclick: events.loadDeals}, 'Refresh')
-					]
-				]),
-				m('p.label', [
-					m('button', {onclick: events.filter}, 'Filter:'),
-					m('input.code', views.input(control.query.value).merge({
-						error: (control.query.status ? 1 : 0)
-					})),
-				]),
-				m('p', [
-					m('span', 'You can filter on: '),
-					m('code', Object.keys(Deal.properties).join(', '))
-				])
-			];
 		}
 	};
 
@@ -225,7 +240,33 @@ var DealsList = (function(){
 		view: function(){
 			return [
 				m('h1', 'Deals'),
-				viewBlocks.controls(),
+				control.loadStatus.doContinue ? [
+					m('p', [
+						m('button', {onclick: events.stopLoading}, 'Cancel'),
+						m('span', 'Loading ' + (control.loadStatus.length || '') + '...')
+					])
+				] : [
+					Deal.all.length > 0 ? [
+						m('p', [
+							m('button', {onclick: events.refreshDeals}, 'Refresh'),
+							m('span', Deal.all.length + ' loaded in memory. ' + (Deal.allFiltered.length || 0) + ' match the current filters.')
+						]),
+						m('p.label', [
+							m('button', {onclick: events.filter}, 'Filter:'),
+							m('input.code', views.input(control.query.value).merge({
+								error: (control.query.status ? 1 : 0)
+							})),
+						]),
+						m('p', [
+							m('span', 'You can filter on: '),
+							m('code', Object.keys(Deal.properties).join(', '))
+						])
+					] : [
+						m('p', [
+							m('button', {onclick: events.loadDeals}, 'Load Deals')
+						])
+					]
+				],
 				m('table', [
 					viewBlocks.headerRow(),
 					viewBlocks.subheaderRow(),
