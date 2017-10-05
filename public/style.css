@@ -46,10 +46,11 @@ a:hover{
 
 .colheaders th{
 	background-color:#14264a;
-	font-weight:bold;
 	color:#fff;
 	text-align:center;
 	border-right:1px solid #777;
+	font-family:"Roboto Slab", Palatino, serif;
+	font-weight:bold;
 }
 .colheaders input{
 	background-color:transparent;
@@ -65,12 +66,13 @@ a:hover{
 	border-color:#777;
 	font-weight:normal;
 }
+.colheaders .month{
+	background-color:#fff;
+	color:#000;
+}
 [sortDirection]{
 	cursor:pointer;
 	text-decoration:underline;
-}
-[sortDirection]:before{
-	color:#aaa;
 }
 [sortDirection="asc"]:before{
 	content: "\2191  ";
@@ -79,8 +81,8 @@ a:hover{
 	content: "\2193  ";
 }
 [isCurrentlySorted]{
-	background-color:#ff6 !important;
-	color:#000 !important;
+	background-color:#03a8f5 !important;
+	color:#fff !important;
 }
 .subheaders > *{
 	border:0;

@@ -106,7 +106,7 @@ var DealsList = (function(){
 				m('th', views.sortable('closedate'), 'Close date'),
 				control.months.map(function(date){
 					var monthName = date.toYM();
-					return m('th', views.sortable('$' + monthName), monthName);
+					return m('th.month', views.sortable('$' + monthName), monthName);
 				})
 			]);
 		},
