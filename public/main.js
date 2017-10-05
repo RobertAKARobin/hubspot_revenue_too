@@ -6,10 +6,14 @@ var DealsList = (function(){
 
 	var events = {
 		filter: function(event){
-			var query = control.query.value();
+			var inputQuery = control.query.value();
 			var deal = {};
+			var matcher = new RegExp(Object.keys(Deal.properties).join('|'), 'g');
 			control.query.status = undefined;
 			try{
+				var query = inputQuery.replace(matcher, function(propertyName){
+					return 'deal["' + propertyName + '"]';
+				})
 				eval(query);
 			}catch(error){
 				control.query.status = 'error';
@@ -17,7 +21,7 @@ var DealsList = (function(){
 			Deal.filter(function(deal){
 				return eval(query);
 			});
-			Location.query({query: query});
+			Location.query({query: inputQuery});
 		},
 		highlight: function(event){
 			var deal = this;
@@ -32,7 +36,7 @@ var DealsList = (function(){
 			var incrementor = this;
 			control.startMonth.setMonth(control.startMonth.getMonth() + incrementor);
 			control.months = control.startMonth.throughNMonths(control.numMonths);
-			Location.query({startMonth: control.startMonth.toYM()});
+			Location.query({startMonth: views.monthName(control.startMonth)});
 		},
 		loadDeals: function(event){
 			control.loadStatus = {
@@ -84,6 +88,17 @@ var DealsList = (function(){
 	}
 
 	var views = {
+		monthName: function(date){
+			return date.toArray().slice(0,2).join('/');
+		},
+		dateIntegerToString: function(integer){
+			try{
+				var string = integer.toString();
+				return [string.substring(0,4), string.substring(4,6), string.substring(6)].join('/');
+			}catch(e){
+				return '';
+			}
+		},
 		input: function(stream){
 			return {
 				value: stream(),
@@ -108,8 +123,9 @@ var DealsList = (function(){
 				m('th', views.sortable('probability_'), 'Probability'),
 				m('th', views.sortable('amount'), 'Amount'),
 				m('th', views.sortable('closedate'), 'Close date'),
+				m('th', views.sortable('startdate'), 'Start date'),
 				control.months.map(function(date, index){
-					var monthName = date.toYM();
+					var monthName = views.monthName(date);
 					var sorter = m('th.month', views.sortable('$' + monthName), monthName);
 					if(index == 0){
 						return [
@@ -136,10 +152,12 @@ var DealsList = (function(){
 					return sum += (deal.amount || 0);
 				}, 0).toDollars()),
 				m('th'),
+				m('th'),
 				control.months.map(function(date, index){
 					var colspan = ((index == 0 || index == (control.numMonths - 1)) ? '[colspan=2]' : '');
+					var monthName = '$' + views.monthName(date);
 					return m('th.number' + colspan, Deal.allFiltered.reduce(function(sum, deal){
-						return sum += (deal['$' + date.toYM()] || 0);
+						return sum += (deal[monthName] || 0);
 					}, 0).toDollars());
 				})
 			]);
@@ -152,9 +170,10 @@ var DealsList = (function(){
 				]),
 				m('td.number', deal.probability_),
 				m('td.number', deal.amount.toDollars()),
-				m('td.number', deal.closedate.toArray().join('/')),
+				m('td.number', views.dateIntegerToString(deal.closedate)),
+				m('td.number', views.dateIntegerToString(deal.startdate)),
 				control.months.map(function(date, index){
-					var allocation = deal['$' + date.toYM()];
+					var allocation = deal['$' + views.monthName(date)];
 					var colspan = ((index == 0 || index == (control.numMonths - 1)) ? '[colspan=2]' : '');
 					return m('td.number' + colspan, (allocation ? allocation.toDollars() : ''));
 				})
@@ -176,6 +195,10 @@ var DealsList = (function(){
 					m('input.code', views.input(control.query.value).merge({
 						error: (control.query.status ? 1 : 0)
 					})),
+				]),
+				m('p', [
+					m('span', 'You can filter on: '),
+					m('code', Object.keys(Deal.properties).join(', '))
 				])
 			];
 		}
@@ -195,7 +218,7 @@ var DealsList = (function(){
 			control.loadStatus = {};
 			control.highlights = [];
 
-			control.startMonth = (Date.fromMonthString(Location.query().startMonth) || (new Date()).getFirstOfMonth());
+			control.startMonth = (Date.fromYMD(Location.query().startMonth) || (new Date()).getFirstOfMonth());
 			control.numMonths = 4;
 			control.months = control.startMonth.throughNMonths(control.numMonths);
 		},

@@ -43,6 +43,9 @@ a{
 a:hover{
 	color:#03a8f5;
 }
+code{
+	font-family: monospace;
+}
 
 .colheaders th{
 	background-color:#14264a;

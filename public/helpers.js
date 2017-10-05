@@ -40,12 +40,7 @@ Location.query = function(paramsObject){
 }
 Date.prototype.toArray = function(){
 	var date = this;
-	return [date.getFullYear(),date.getMonthWithZeroes(),date.getDateWithZeroes()];
-}
-Date.prototype.toYM = function(){
-	var date = this;
-	var array = date.toArray();
-	return [array[0], array[1]].join('/');
+	return [date.getFullYear(), date.getMonthWithZeroes(), date.getDateWithZeroes()];
 }
 Date.prototype.getMonthWithZeroes = function(){
 	var date = this;
@@ -67,12 +62,17 @@ Date.prototype.weeksUntil = function(enddate){
 		return 0;
 	}
 }
-Date.fromMonthString = function(string){
+Date.fromYMD = function(input){
 	try{
-		var dateParts = string.match(/^([0-9]{4})\/([0-9]{2})/);
-		var year = dateParts[1];
-		var month = dateParts[2];
-		return (new Date(year, month - 1));
+		var dateParts = input.toString().replace(/[^0-9]/g,'');
+		var year = dateParts.substring(0,4);
+		var month = dateParts.substring(4,6);
+		var date = dateParts.substring(6);
+		var outputDate = (new Date(year, month - 1));
+		if(date){
+			outputDate.setDate(date);
+		}
+		return outputDate;
 	}catch(e){
 		return null;
 	}

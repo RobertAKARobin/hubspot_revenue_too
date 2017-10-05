@@ -26,7 +26,8 @@ var Deal = (function(){
 				if(isNaN(value)){
 					value = null;
 				}else{
-					value = (new Date(value + (5 * 60 * 60 * 1000)));
+					// Has to be integer for filtering
+					value = parseInt((new Date(value + (5 * 60 * 60 * 1000))).toArray().join(''));
 				}
 				return value;
 			}
@@ -93,13 +94,13 @@ var Deal = (function(){
 				}
 			}
 			if(deal.amount && deal.startdate){
-				var startDate = new Date(deal.startdate.getTime());
-				var numWeeks = (deal.startdate.weeksUntil(deal.enddate) || 4);
+				var startDate = Date.fromYMD(deal.startdate);
+				var endDate = Date.fromYMD(deal.enddate);
+				var numWeeks = (startDate.weeksUntil(endDate) || 5);
 				var allocationPerWeek = (deal.amount / numWeeks).roundTo(2);
 				numWeeks.times(function(){
-					var monthName = '$' + startDate.toYM();
-					deal[monthName] = (deal[monthName] || 0);
-					deal[monthName] += allocationPerWeek;
+					var monthName = '$' + startDate.toArray().slice(0,2).join('/');
+					deal[monthName] = ((deal[monthName] || 0) + allocationPerWeek);
 					startDate.setDate(startDate.getDate() + 7);
 				});
 			}
