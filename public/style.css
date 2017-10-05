@@ -51,9 +51,8 @@ code{
 	background-color:#14264a;
 	color:#fff;
 	text-align:center;
-	border-right:1px solid #777;
 	font-family:"Roboto Slab", Palatino, serif;
-	font-weight:bold;
+	white-space:nowrap;
 }
 .colheaders input{
 	background-color:transparent;
@@ -90,13 +89,10 @@ code{
 	color:#fff !important;
 }
 .subheaders > *{
-	border:0;
 	background-color:#ccc;
-	border-right:1px solid #aaa;
 }
 table{
-	width:100%;
-	min-width:800px;
+	min-width:100%;
 }
 table, th, td{
 	border-collapse:collapse;

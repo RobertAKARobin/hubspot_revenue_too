@@ -6,7 +6,7 @@ var DealsList = (function(){
 
 	var events = {
 		filter: function(event){
-			var inputQuery = (control.query.value() || 'probability_ >= 75 && probability_ <= 99');
+			var inputQuery = (control.query.value().toString() || 'probability_ >= 75 && probability_ <= 99');
 			var query = inputQuery;
 			var deal = {};
 			var matcher = new RegExp(Object.keys(Deal.properties).join('|'), 'g');
