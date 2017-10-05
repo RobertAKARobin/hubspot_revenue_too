@@ -11,7 +11,7 @@ var Deal = (function(){
 			probability_: 'integer',
 			amount: 'float', 
 			closedate: 'date',
-			schedule: 'string'
+			startdate: 'date'
 		},
 		formatFromAPI: {
 			float: function(value){
@@ -25,8 +25,7 @@ var Deal = (function(){
 				if(isNaN(value)){
 					value = null;
 				}else{
-					value = new Date(value + (5 * 60 * 60 * 1000));
-					value = value.getFullYear() + '/' + value.getMonthWithZeroes() + '/' + value.getDateWithZeroes();
+					value = (new Date(value + (5 * 60 * 60 * 1000))).toInteger();
 				}
 				return value;
 			}
@@ -82,24 +81,6 @@ var Deal = (function(){
 				deal[propertyName] = (formatFunction ? formatFunction.call(null, value) : value);
 			}
 			return deal;
-		},
-		updateAllocations: function(){
-			var deal = this;
-			return deal;
-			// var monthlyAllocations = (deal.schedule.match(match.scheduleString) || []);
-			// var startDate = new Date(deal.startdate.getTime());
-			// deal.monthlyAllocations = {};
-			// for(var i = 0, l = monthlyAllocations.length; i < l; i++){
-			// 	var monthlyAllocation = monthlyAllocations[i];
-			// 	var numericValueForMonth = parseFloat(monthlyAllocation.replace(match.nonNum, ''));
-			// 	var dollarValueForMonth = numericValueForMonth;
-			// 	if(/%/.test(monthlyAllocation)){
-			// 		dollarValueForMonth = (numericValueForMonth * (deal.amount / 100));
-			// 	}
-			// 	deal.monthlyAllocations[startDate.getTime()] = dollarValueForMonth;
-			// 	startDate.setMonth(startDate.getMonth() + 1);
-			// }
-			// return deal;
 		}
 	}
 

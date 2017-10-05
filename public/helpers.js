@@ -38,31 +38,9 @@ Location.query = function(paramsObject){
 	}
 	return query;
 }
-Date.fromObject = function(dateObject){
-	return (new Date(
-		dateObject.year,
-		dateObject.month - 1,
-		(dateObject.day || 1)
-	));
-}
-Date.prototype.toObject = function(){
+Date.prototype.toInteger = function(){
 	var date = this;
-	return {
-		year: date.getFullYear(),
-		month: date.getMonth() + 1,
-		day: date.getDate()
-	}
-}
-Date.prototype.toPrettyString = function(showDays){
-	var date = this;
-	var delim = '/';
-	var year = date.getFullYear();
-	var month = date.getMonth() + 1;
-	if(showDays){
-		return month + delim + date.getDate() + delim + year;
-	}else{
-		return month + delim + year;
-	}
+	return parseInt([date.getFullYear(),date.getMonthWithZeroes(),date.getDateWithZeroes()].join(''));
 }
 Date.prototype.getMonthWithZeroes = function(){
 	var date = this;
@@ -72,9 +50,21 @@ Date.prototype.getDateWithZeroes = function(){
 	var date = this;
 	return ('0' + date.getDate()).slice(-2);
 }
+Date.prototype.getFirstOfMonth = function(){
+	var date = this;
+	return new Date(date.getFullYear(), date.getMonth());
+}
 Number.prototype.toDollars = function(){
 	var amount = this;
 	return '$' + amount.toLocaleString(undefined,  {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+Number.prototype.map = function(callback){
+	var number = this;
+	var output = [];
+	for(var i = 0, l = number; i < l; i++){
+		output.push(callback(i));
+	}
+	return output;
 }
 Object.defineProperty(Object.prototype, 'merge', {
 	enumerable: false,

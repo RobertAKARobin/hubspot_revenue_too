@@ -92,6 +92,10 @@ var DealsList = (function(){
 	}
 
 	var views = {
+		dateArrayFromInteger: function(int){
+			var string = int.toString();
+			return [string.substring(0,4), string.substring(4,6), string.substring(6)];
+		},
 		input: function(stream){
 			return {
 				value: stream(),
@@ -136,7 +140,7 @@ var DealsList = (function(){
 				]),
 				m('td.number', deal.probability_),
 				m('td.number', deal.amount.toDollars()),
-				m('td.number', deal.closedate)
+				m('td.number', views.dateArrayFromInteger(deal.closedate).join('/'))
 			]);
 		},
 		controls: function(){
