@@ -11,7 +11,8 @@ var Deal = (function(){
 			probability_: 'integer',
 			amount: 'float', 
 			closedate: 'date',
-			startdate: 'date'
+			startdate: 'date',
+			enddate: 'date'
 		},
 		formatFromAPI: {
 			float: function(value){
@@ -25,7 +26,7 @@ var Deal = (function(){
 				if(isNaN(value)){
 					value = null;
 				}else{
-					value = (new Date(value + (5 * 60 * 60 * 1000))).toInteger();
+					value = (new Date(value + (5 * 60 * 60 * 1000)));
 				}
 				return value;
 			}
@@ -79,6 +80,28 @@ var Deal = (function(){
 				var formatFunction = Deal.formatFromAPI[type];
 				value = (value instanceof Object ? value.value : value);
 				deal[propertyName] = (formatFunction ? formatFunction.call(null, value) : value);
+			}
+			deal.updateRevenueSchedule();
+			return deal;
+		},
+		updateRevenueSchedule: function(){
+			var deal = this;
+			var startDate = (deal.startdate || deal.closedate);
+			for(var propertyName in deal){
+				if(propertyName.substring(0, 1) == '$'){
+					delete deal[propertyName];
+				}
+			}
+			if(deal.amount && deal.startdate){
+				var startDate = new Date(deal.startdate.getTime());
+				var numWeeks = (deal.startdate.weeksUntil(deal.enddate) || 4);
+				var allocationPerWeek = (deal.amount / numWeeks).roundTo(2);
+				numWeeks.times(function(){
+					var monthName = '$' + startDate.toYM();
+					deal[monthName] = (deal[monthName] || 0);
+					deal[monthName] += allocationPerWeek;
+					startDate.setDate(startDate.getDate() + 7);
+				});
 			}
 			return deal;
 		}

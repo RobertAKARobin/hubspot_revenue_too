@@ -2,18 +2,7 @@
 
 var DealsList = (function(){
 
-	var control = {
-		sort: {
-			activeSortProperty: null,
-			directions: {}
-		},
-		query: {
-			value: m.stream(Location.query().query || ''),
-			status: undefined
-		},
-		highlights: [],
-		loadStatus: {}
-	}
+	var control = {};
 
 	var action = {
 		loadDeals: function(){
@@ -92,10 +81,6 @@ var DealsList = (function(){
 	}
 
 	var views = {
-		dateArrayFromInteger: function(int){
-			var string = int.toString();
-			return [string.substring(0,4), string.substring(4,6), string.substring(6)];
-		},
 		input: function(stream){
 			return {
 				value: stream(),
@@ -118,7 +103,11 @@ var DealsList = (function(){
 				m('th', views.sortable('dealname'), 'Name'),
 				m('th', views.sortable('probability_'), 'Probability'),
 				m('th', views.sortable('amount'), 'Amount'),
-				m('th', views.sortable('closedate'), 'Close date')
+				m('th', views.sortable('closedate'), 'Close date'),
+				control.months.map(function(date){
+					var monthName = date.toYM();
+					return m('th', views.sortable('$' + monthName), monthName);
+				})
 			]);
 		},
 		subheaderRow: function(){
@@ -129,7 +118,12 @@ var DealsList = (function(){
 				m('th.number', Deal.allFiltered.reduce(function(sum, deal){
 					return sum += (deal.amount || 0);
 				}, 0).toDollars()),
-				m('th')
+				m('th'),
+				control.months.map(function(date){
+					return m('th.number', Deal.allFiltered.reduce(function(sum, deal){
+						return sum += (deal['$' + date.toYM()] || 0);
+					}, 0).toDollars());
+				})
 			]);
 		},
 		bodyRow: function(deal, index){
@@ -140,7 +134,11 @@ var DealsList = (function(){
 				]),
 				m('td.number', deal.probability_),
 				m('td.number', deal.amount.toDollars()),
-				m('td.number', views.dateArrayFromInteger(deal.closedate).join('/'))
+				m('td.number', deal.closedate.toArray().join('/')),
+				control.months.map(function(date){
+					var allocation = deal['$' + date.toYM()];
+					return m('td.number', (allocation ? allocation.toDollars() : ''));
+				})
 			]);
 		},
 		controls: function(){
@@ -165,6 +163,27 @@ var DealsList = (function(){
 	};
 
 	return {
+		oninit: function(){
+			control = {};
+			control.sort = {
+				activeSortProperty: null,
+				directions: {}
+			};
+			control.query = {
+				value: m.stream(Location.query().query || ''),
+				status: undefined
+			};
+			control.loadStatus = {};
+			control.highlights = [];
+
+			var startMonth = (Date.fromMonthString(Location.query().startMonth) || (new Date()).getFirstOfMonth());
+			var numMonths = 4;
+			control.months = numMonths.map(function(){
+				var result = (new Date(startMonth.getTime()));
+				startMonth.setMonth(startMonth.getMonth() + 1);
+				return result;
+			});
+		},
 		view: function(){
 			return [
 				m('h1', 'Deals'),
