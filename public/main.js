@@ -7,14 +7,16 @@ var DealsList = (function(){
 	var events = {
 		filter: function(event){
 			var inputQuery = (control.query.value().toString() || 'probability_ >= 75 && probability_ <= 99');
-			var query = inputQuery;
-			var deal = {};
-			var matcher = new RegExp(Object.keys(Deal.properties).join('|'), 'g');
 			control.query.status = undefined;
+			inputQuery = inputQuery
+				.replace(/=+/g, '=')
+				.replace('=', '==');
 			try{
-				query = query.replace(matcher, function(propertyName){
+				var matcher = new RegExp(Object.keys(Deal.properties).join('|'), 'g');
+				var query = inputQuery.replace(matcher, function(propertyName){
 					return 'deal["' + propertyName + '"]';
 				});
+				var deal = {};
 				eval(query);
 				Deal.filter(function(deal){
 					return eval(query);
