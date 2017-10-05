@@ -4,8 +4,37 @@ var DealsList = (function(){
 
 	var control = {};
 
-	var action = {
-		loadDeals: function(){
+	var events = {
+		filter: function(event){
+			var query = control.query.value();
+			var deal = {};
+			control.query.status = undefined;
+			try{
+				eval(query);
+			}catch(error){
+				control.query.status = 'error';
+			}
+			Deal.filter(function(deal){
+				return eval(query);
+			});
+			Location.query({query: query});
+		},
+		highlight: function(event){
+			var deal = this;
+			var highlightNum = control.highlights.indexOf(deal.dealId);
+			if(highlightNum >= 0){
+				control.highlights.splice(highlightNum, 1);
+			}else{
+				control.highlights.push(deal.dealId);
+			}
+		},
+		incrementMonths: function(event){
+			var incrementor = this;
+			control.startMonth.setMonth(control.startMonth.getMonth() + incrementor);
+			control.months = control.startMonth.throughNMonths(control.numMonths);
+			Location.query({startMonth: control.startMonth.toYM()});
+		},
+		loadDeals: function(event){
 			control.loadStatus = {
 				offset: 0,
 				doContinue: true
@@ -33,37 +62,8 @@ var DealsList = (function(){
 				if(response.success && response.hasMore && control.loadStatus.doContinue){
 					loadNextPage();
 				}else{
-					action.stopLoading();
+					events.stopLoading();
 				}
-			}
-		},
-		filter: function(){
-			var query = control.query.value();
-			var deal = {};
-			control.query.status = undefined;
-			try{
-				eval(query);
-			}catch(error){
-				control.query.status = 'error';
-			}
-			Deal.filter(function(deal){
-				return eval(query);
-			});
-			Location.query({query: query});
-		},
-		stopLoading: function(){
-			control.loadStatus.doContinue = false;
-		}
-	}
-
-	var events = {
-		highlight: function(event){
-			var deal = this;
-			var highlightNum = control.highlights.indexOf(deal.dealId);
-			if(highlightNum >= 0){
-				control.highlights.splice(highlightNum, 1);
-			}else{
-				control.highlights.push(deal.dealId);
 			}
 		},
 		sort: function(event){
@@ -72,6 +72,9 @@ var DealsList = (function(){
 			Deal.sortOn(sortProperty, sortDirection)
 			control.sort.directions[sortProperty] = sortDirection;
 			control.sort.activeSortProperty = sortProperty;
+		},
+		stopLoading: function(event){
+			control.loadStatus.doContinue = false;
 		},
 		updateInput: function(event){
 			var stream = this;
@@ -89,6 +92,7 @@ var DealsList = (function(){
 		},
 		sortable: function(sortProperty){
 			return {
+				hasEvent: true,
 				isCurrentlySorted: (sortProperty == control.sort.activeSortProperty),
 				sortDirection: (control.sort.directions[sortProperty] || 'desc'),
 				onclick: events.sort.bind(sortProperty)
@@ -104,9 +108,22 @@ var DealsList = (function(){
 				m('th', views.sortable('probability_'), 'Probability'),
 				m('th', views.sortable('amount'), 'Amount'),
 				m('th', views.sortable('closedate'), 'Close date'),
-				control.months.map(function(date){
+				control.months.map(function(date, index){
 					var monthName = date.toYM();
-					return m('th.month', views.sortable('$' + monthName), monthName);
+					var sorter = m('th.month', views.sortable('$' + monthName), monthName);
+					if(index == 0){
+						return [
+							m('th.month[hasEvent]', {onclick: events.incrementMonths.bind(-1)}, '<'),
+							sorter
+						];
+					}else if(index == (control.numMonths - 1)){
+						return [
+							sorter,
+							m('th.month[hasEvent]', {onclick: events.incrementMonths.bind(1)}, '>')
+						];
+					}else{
+						return sorter;
+					}
 				})
 			]);
 		},
@@ -119,8 +136,9 @@ var DealsList = (function(){
 					return sum += (deal.amount || 0);
 				}, 0).toDollars()),
 				m('th'),
-				control.months.map(function(date){
-					return m('th.number', Deal.allFiltered.reduce(function(sum, deal){
+				control.months.map(function(date, index){
+					var colspan = ((index == 0 || index == (control.numMonths - 1)) ? '[colspan=2]' : '');
+					return m('th.number' + colspan, Deal.allFiltered.reduce(function(sum, deal){
 						return sum += (deal['$' + date.toYM()] || 0);
 					}, 0).toDollars());
 				})
@@ -135,9 +153,10 @@ var DealsList = (function(){
 				m('td.number', deal.probability_),
 				m('td.number', deal.amount.toDollars()),
 				m('td.number', deal.closedate.toArray().join('/')),
-				control.months.map(function(date){
+				control.months.map(function(date, index){
 					var allocation = deal['$' + date.toYM()];
-					return m('td.number', (allocation ? allocation.toDollars() : ''));
+					var colspan = ((index == 0 || index == (control.numMonths - 1)) ? '[colspan=2]' : '');
+					return m('td.number' + colspan, (allocation ? allocation.toDollars() : ''));
 				})
 			]);
 		},
@@ -146,14 +165,14 @@ var DealsList = (function(){
 				m('p', [
 					control.loadStatus.doContinue ? [
 						m('span', 'Loading ' + (Deal.all.length || '') + '...'),
-						m('button', {onclick: action.stopLoading}, 'Cancel')
+						m('button', {onclick: events.stopLoading}, 'Cancel')
 					] : [
 						m('span', Deal.all.length + ' loaded in memory. ' + (Deal.allFiltered.length || 0) + ' match the current filters.'),
-						m('button', {onclick: action.loadDeals}, 'Refresh')
+						m('button', {onclick: events.loadDeals}, 'Refresh')
 					]
 				]),
 				m('p.label', [
-					m('button', {onclick: action.filter}, 'Filter:'),
+					m('button', {onclick: events.filter}, 'Filter:'),
 					m('input.code', views.input(control.query.value).merge({
 						error: (control.query.status ? 1 : 0)
 					})),
@@ -176,13 +195,9 @@ var DealsList = (function(){
 			control.loadStatus = {};
 			control.highlights = [];
 
-			var startMonth = (Date.fromMonthString(Location.query().startMonth) || (new Date()).getFirstOfMonth());
-			var numMonths = 4;
-			control.months = numMonths.map(function(){
-				var result = (new Date(startMonth.getTime()));
-				startMonth.setMonth(startMonth.getMonth() + 1);
-				return result;
-			});
+			control.startMonth = (Date.fromMonthString(Location.query().startMonth) || (new Date()).getFirstOfMonth());
+			control.numMonths = 4;
+			control.months = control.startMonth.throughNMonths(control.numMonths);
 		},
 		view: function(){
 			return [

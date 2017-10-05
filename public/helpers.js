@@ -77,6 +77,15 @@ Date.fromMonthString = function(string){
 		return null;
 	}
 }
+Date.prototype.throughNMonths = function(numMonths){
+	var date = this;
+	var startMonth = new Date(date.getTime()).getFirstOfMonth();
+	return numMonths.map(function(){
+		var result = (new Date(startMonth.getTime()));
+		startMonth.setMonth(startMonth.getMonth() + 1);
+		return result;
+	})
+}
 Number.prototype.toDollars = function(){
 	var amount = this;
 	return '$' + amount.toLocaleString(undefined,  {minimumFractionDigits: 2, maximumFractionDigits: 2});

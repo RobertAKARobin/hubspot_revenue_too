@@ -70,8 +70,10 @@ a:hover{
 	background-color:#fff;
 	color:#000;
 }
-[sortDirection]{
+[hasEvent]{
 	cursor:pointer;
+}
+[sortDirection]{
 	text-decoration:underline;
 }
 [sortDirection="asc"]:before{
