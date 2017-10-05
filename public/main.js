@@ -6,7 +6,7 @@ var DealsList = (function(){
 
 	var events = {
 		filter: function(event){
-			var inputQuery = control.query.value();
+			var inputQuery = (control.query.value() || 'probability_ >= 75 && probability_ <= 99');
 			var query = inputQuery;
 			var deal = {};
 			var matcher = new RegExp(Object.keys(Deal.properties).join('|'), 'g');
@@ -16,13 +16,14 @@ var DealsList = (function(){
 					return 'deal["' + propertyName + '"]';
 				});
 				eval(query);
+				Deal.filter(function(deal){
+					return eval(query);
+				});
 			}catch(error){
 				control.query.status = 'error';
 			}
-			Deal.filter(function(deal){
-				return eval(query);
-			});
 			Location.query({query: inputQuery});
+			control.query.value(inputQuery);
 		},
 		highlight: function(event){
 			var deal = this;
@@ -254,7 +255,7 @@ var DealsList = (function(){
 							m('span', Deal.all.length + ' loaded in memory. ' + (Deal.allFiltered.length || 0) + ' match the current filters.')
 						]),
 						m('p.label', [
-							m('button', {onclick: events.filter}, 'Filter:'),
+							m('button', {onclick: events.filter}, 'Filter'),
 							m('input.code', views.input(control.query.value).merge({
 								error: (control.query.status ? 1 : 0)
 							})),
