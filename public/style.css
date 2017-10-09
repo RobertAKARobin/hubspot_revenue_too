@@ -22,8 +22,8 @@
 }
 html, body{
 	font-family: "Nunito Sans", "Helvetica Neue", "Helvetica", sans-serif;
-	font-size:14px;
-	line-height:24px;
+	font-size:12px;
+	line-height:18px;
 	color:#000;
 	background-color:#fff;
 }
@@ -101,7 +101,7 @@ table, th, td{
 th, td{
 	vertical-align: top;
 	text-align: left;
-	padding:5px;
+	padding:3px;
 	overflow:hidden;
 	white-space:nowrap;
 }
@@ -141,7 +141,7 @@ label > input,
 [dateshift]{
 	display:inline-block;
 	cursor:pointer;
-	padding:0 5px;
+	padding:0 3px;
 }
 [dateshift]:hover{
 	color:#ff0;
