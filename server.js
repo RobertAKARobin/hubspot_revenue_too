@@ -98,7 +98,7 @@ httpServer
 
 		request(params, function(error, response, body){
 			var apiResponse = JSON.parse(body);
-			apiResponse.success = true;
+			apiResponse.success = !(error || apiResponse.status == 'error');
 			res.send(apiResponse);
 		});
 	})

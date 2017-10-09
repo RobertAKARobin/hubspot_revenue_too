@@ -66,6 +66,8 @@ var DealsList = (function(){
 				if(response.success && control.loadStatus.doContinue){
 					response.deals.forEach(Deal.new);
 					control.loadStatus.offset = response.offset;
+				}else{
+					return window.location.replace('/authorize/');
 				}
 				if(!(control.loadStatus.stopAfterFirst) && response.success && response.hasMore && control.loadStatus.doContinue){
 					control.loadStatus.message = 'Loading ' + Deal.all.length + '...';
