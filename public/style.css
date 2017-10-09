@@ -52,7 +52,6 @@ code{
 	color:#fff;
 	text-align:center;
 	font-family:"Roboto Slab", Palatino, serif;
-	white-space:nowrap;
 }
 .colheaders input{
 	background-color:transparent;
@@ -69,11 +68,14 @@ code{
 	font-weight:normal;
 }
 .colheaders .month{
-	background-color:#fff;
+	background-color:#999;
 	color:#000;
 }
 [hasEvent]{
 	cursor:pointer;
+}
+[sortDirection]:hover{
+	color:#ff0;
 }
 [sortDirection]{
 	text-decoration:underline;
@@ -85,11 +87,10 @@ code{
 	content: "\2193  ";
 }
 [isCurrentlySorted]{
-	background-color:#03a8f5 !important;
-	color:#fff !important;
+	color:#ff0 !important;
 }
 .subheaders > *{
-	background-color:#ccc;
+	background-color:#eee;
 }
 table{
 	min-width:100%;
@@ -102,9 +103,18 @@ th, td{
 	text-align: left;
 	padding:5px;
 	overflow:hidden;
+	white-space:nowrap;
+}
+th:empty,
+td:empty{
+	padding:0 !important;
 }
 tr.body > *{
-	border-right:1px solid #ddd;
+	border-right:1px solid #eee;
+	border-bottom:1px solid #eee;
+}
+tr.body:hover > *{
+	background-color:#eee;
 }
 p,
 label,
@@ -126,7 +136,22 @@ label > input,
 }
 .number,
 .date{
-	text-align:right;
+	text-align:right !important;
+}
+[dateshift]:before{
+	display:inline-block;
+	cursor:pointer;
+}
+[dateshift="left"]:before{
+	padding-right:10px;
+	content:'\27f5';
+}
+[dateshift="right"]:before{
+	padding-left:10px;
+	content:'\27f6';
+}
+[dateshift]:hover{
+	color:#ff0;
 }
 .code{
 	font-family:monospace;

@@ -12,7 +12,12 @@ var Deal = (function(){
 			amount: 'float', 
 			closedate: 'date',
 			startdate: 'date',
-			enddate: 'date'
+			end_date: 'date',
+			follow_up_date: 'date',
+			solutions_architect: 'string',
+			account_manager: 'string',
+			dealstage: 'string',
+			lead_source_category: 'string'
 		},
 		formatFromAPI: {
 			float: function(value){
