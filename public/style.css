@@ -138,17 +138,10 @@ label > input,
 .date{
 	text-align:right !important;
 }
-[dateshift]:before{
+[dateshift]{
 	display:inline-block;
 	cursor:pointer;
-}
-[dateshift="left"]:before{
-	padding-right:10px;
-	content:'\27f5';
-}
-[dateshift="right"]:before{
-	padding-left:10px;
-	content:'\27f6';
+	padding:0 5px;
 }
 [dateshift]:hover{
 	color:#ff0;

@@ -174,9 +174,15 @@ var DealsList = (function(){
 						m('span', views.sortable('$' + monthName), monthName)
 					];
 					if(index == 0){
-						content.unshift(m('span[dateshift=left]', {onclick: events.incrementMonths.bind(-1)}));
+						content.unshift([
+							m('span[dateshift]', {onclick: events.incrementMonths.bind(-12)}, '≪'),
+							m('span[dateshift]', {onclick: events.incrementMonths.bind(-1)}, '<')
+						]);
 					}else if(index == (control.numMonths - 1)){
-						content.push(m('span[dateshift=right]', {onclick: events.incrementMonths.bind(1)}));
+						content.push([
+							m('span[dateshift]', {onclick: events.incrementMonths.bind(1)}, '>'),
+							m('span[dateshift]', {onclick: events.incrementMonths.bind(12)}, '≫')
+						]);
 					}
 					return m('th.date.month', content);
 				}),
